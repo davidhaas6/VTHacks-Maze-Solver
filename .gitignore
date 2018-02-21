@@ -139,3 +139,5 @@ fabric.properties
 /build
 /captures
 .externalNativeBuild
+
+old_methods.txt
