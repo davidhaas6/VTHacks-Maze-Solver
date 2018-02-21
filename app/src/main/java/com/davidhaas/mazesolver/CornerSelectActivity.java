@@ -1,24 +1,21 @@
 package com.davidhaas.mazesolver;
 
-import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Intent;
-import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.net.Uri;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.davidhaas.mazesolver.pathfinding.Asolution;
 
@@ -28,15 +25,10 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
 import java.nio.IntBuffer;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Stack;
-
-import static java.security.AccessController.getContext;
 
 public class CornerSelectActivity extends AppCompatActivity {
 
@@ -47,8 +39,6 @@ public class CornerSelectActivity extends AppCompatActivity {
     String imgPath;
 
     private int[][] corners;
-    private int corner_count;
-    private boolean maze_solved;
     private double view_scale_ratio;
     int vert_offset;
     private final int scale = 1;
@@ -58,53 +48,57 @@ public class CornerSelectActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_corner_select);
 
+        // Loads the intent as a bitmap
         Intent intent = getIntent();
         imgPath = intent.getStringExtra(MainActivity.IMAGE_FILE);
         image = rotateBitmap(BitmapFactory.decodeFile(imgPath), 90);
 
         // image = scaleBMP(image, 0.5);
 
+        // Scales and set the bitmap
         imageView = findViewById(R.id.imageView);
         imageView.setImageBitmap(image);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
+        // Gets the ratio between the appeared image height and the actual height so we can map
+        // screen touches to pixels on the image
         DisplayMetrics displayMetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
         int height = displayMetrics.heightPixels;
 
         view_scale_ratio = (double)image.getHeight() / height;
 
+        // Initializes the variables
         corners = new int[4][2];
-        corner_count = 0;
-        maze_solved = false;
+
+        // Finds the vertical offset on the image due to the menu bar
         vert_offset = getToolBarHeight();
         Log.i(TAG, "onCreate: " + vert_offset);
 
 
         imageView.setOnTouchListener(new View.OnTouchListener() {
+            private int corner_count = 0;
+            private boolean maze_solved = false;
+
             @Override
             public boolean onTouch(View view, MotionEvent event) {
-
                 view.performClick();
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     int x = (int) (event.getX() * view_scale_ratio);
                     int y = (int) (event.getY() * view_scale_ratio);
 
                     if(corner_count < 4) {
-                        // TODO: image is translated downwards, get correct coordinates
+                        //TODO: Make circle objects that you can move
                         corners[corner_count] = new int[]{x,y+vert_offset};
                         corner_count++;
-                        Log.i(TAG, "onTouch: \n" + printArr(corners));
+
                         if (corner_count == 4) {
                             corners = CVUtils.orderPoints(corners);
-                            solveMaze();
+                            maze_solved = solveMaze();
                         }
-                        //TODO: Make circle objects that you can move
                     } else if(!maze_solved) {
-                        solveMaze();
+                        maze_solved = solveMaze();
                     }
-
-                    //Log.i(TAG, "onTouch: (" + x + ", " + y + ")");
                 }
                 return false;
             }
@@ -129,64 +123,56 @@ public class CornerSelectActivity extends AppCompatActivity {
     // Applies a perspective transform and adaptive gausian threshold to get the deskewed matrix of
     // binary (0 or 1) values. 1s represent walls and 0s are paths.
     public int[][] getDeskewedMatrix(int[][] corners, String path){
-        //TODO
 
+        // Converts the bitmap to an OpenCV matrix
         Mat img_matrix = new Mat();
         Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
         Utils.bitmapToMat(bmp32, img_matrix);
 
-
+        // Applies a 4 point transform to the image
         img_matrix = CVUtils.fourPointTransform(img_matrix, corners, false);
 
-        Size orig_size = img_matrix.size();
-        Mat small_im = new Mat(img_matrix.rows()/scale, img_matrix.cols()/scale, img_matrix.type());
-        Imgproc.resize(img_matrix.clone(), small_im, new Size(orig_size.width / scale, orig_size.height / scale));
+//        // Scales the image down
+//        Size orig_size = img_matrix.size();
+//        Mat small_im = new Mat(img_matrix.rows()/scale, img_matrix.cols()/scale, img_matrix.type());
+//        Imgproc.resize(img_matrix.clone(), small_im, new Size(orig_size.width / scale, orig_size.height / scale));
 
         // Converts it to gray
-        Imgproc.cvtColor(small_im.clone(), small_im, Imgproc.COLOR_RGB2GRAY);
+        Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
 
-        // TODO: blur image
-        Imgproc.GaussianBlur(small_im.clone(), small_im, new Size(15,15), 0);
+        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15,15), 0);
+
         // Applies an adaptive Gaussian threshold to the matrix
+        Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
 
-        Imgproc.adaptiveThreshold(small_im.clone(), small_im, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
-        Log.i(TAG, "getDeskewedMatrix: Applied threshold");
+        // Returns a 2d array in which the 1s are walls and the 0s are paths
+        int[][] arr = CVUtils.getBinaryArray(img_matrix);
 
-//        Bitmap bmp = null;
-//        Mat tmp = new Mat (image.getHeight(), image.getWidth(), CvType.CV_8U, new Scalar(4));
-//        try {
-//            //Imgproc.cvtColor(seedsImage, tmp, Imgproc.COLOR_RGB2BGRA);
-//            Imgproc.cvtColor(img_matrix, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
-//            bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
-//            Utils.matToBitmap(tmp, bmp);
-//        }
-//        catch (CvException e){Log.d("Exception",e.getMessage());}
-//        imageView.setImageBitmap(bmp);
-
-        int[][] arr = CVUtils.getBinaryArray(small_im);
         Log.i(TAG, "getDeskewedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
-        //for(int i = 0; i < arr[0].length; i++)
-            //Log.i(TAG, "getDeskewedMatrix: " + arr[0][i]);
-        // Imgproc.
 
         return arr;
     }
 
     // Runs the maze solving methods
-    public void solveMaze() {
+    public boolean solveMaze() {
+        // Returns a deskewed and cropped maze
         int[][] deskewedMatrix = getDeskewedMatrix(corners, imgPath);
 
+        // Runs A* on the maze and gets the solution stack
+        //TODO: Multithread A*?
         Asolution mySol = new Asolution(deskewedMatrix);
         Stack<int[]> solution = mySol.getPath();
 
         if (solution == null){
+            Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
             Log.e(TAG, "solveMaze: " + "Could not solve maze" );
-            return;
+
+            return false;
         }
         Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
 
         drawSolution(solution, deskewedMatrix);
-        maze_solved = true;
+       return true;
     }
 
     // Writes the solution to the deskewed matrix, and writes a bitmap image in which all the
@@ -237,7 +223,7 @@ public class CornerSelectActivity extends AppCompatActivity {
         Bitmap skewed_solution = Bitmap.createBitmap(skew_matrix.cols(), skew_matrix.rows(), Bitmap.Config.ARGB_8888);
 
         Utils.matToBitmap(skew_matrix, skewed_solution);
-        Bitmap s_soln = (Bitmap) skewed_solution;
+        Bitmap s_soln = skewed_solution;
 
         putOverlay(image, solution, corners[0][0], corners[0][1]);
         putOverlay(image, s_soln, corners[0][0], corners[0][1]);
@@ -250,15 +236,32 @@ public class CornerSelectActivity extends AppCompatActivity {
         canvas.drawBitmap(overlay, x, y, paint);
     }
 
+    public void displayMat(Mat mat) {
+        Bitmap bmp = null;
+
+        Mat tmp = new Mat (image.getHeight(), image.getWidth(), CvType.CV_8U, new Scalar(4));
+        try {
+            Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+            bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(tmp, bmp);
+        }
+        catch (CvException e){
+            Log.d("Exception",e.getMessage());
+        }
+        imageView.setImageBitmap(bmp);
+    }
+
     public String printArr(int[][] arr) {
-        String ret = "";
+        StringBuilder sb = new StringBuilder();
+
         for(int q = 0; q < arr.length; q++){
             for (int h = 0; h < arr[q].length; h++){
-                ret += arr[q][h] + ", ";
+                sb.append(arr[q][h]);
+                sb.append(", ");
             }
-            ret += "\n";
+            sb.append("\n");
         }
-        return ret;
+        return sb.toString();
     }
 
     private int[] get1DArray(int[][] arr, int numChannels) {
@@ -274,44 +277,10 @@ public class CornerSelectActivity extends AppCompatActivity {
         return ret;
     }
 
-    public int[][] getArray(Bitmap image){
-        int w = image.getWidth(), h = image.getHeight();
-        int[] pixel_temp = new int[w * h];
-        image.getPixels(pixel_temp, 0, w, 0, 0, w, h);
-        return getGrayScaleArray(pixel_temp, w, h);
-    }
-
     public static Bitmap rotateBitmap(Bitmap source, float angle) {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
-
-    private int[][] getGrayScaleArray(int[] pixels, int width, int height) {
-        Log.i(TAG, "w:" + width + " h" + height);
-
-        int[][] rgb = new int[height][width];
-        int r, g, b, gray, count = 0;
-
-        Log.i(TAG, "RGB Array init2");
-
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-
-                r = Color.red(pixels[count]);
-                g = Color.green(pixels[count]);
-                b = Color.blue(pixels[count]);
-
-                gray = (int) ((0.3 * r) + (0.59 * g) + (0.11 * b));
-                //Log.i(TAG, "Values got");
-
-                rgb[i][j] = gray;
-                count++;
-            }
-        }
-
-        return rgb;
     }
 
     public int getToolBarHeight() {
