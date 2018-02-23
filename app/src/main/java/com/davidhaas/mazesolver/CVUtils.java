@@ -2,6 +2,7 @@ package com.davidhaas.mazesolver;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
@@ -106,6 +107,29 @@ public class CVUtils {
 
     public static double distance(int[] p1, int[] p2) {
         return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
+    }
+
+    // Crops an image into the surrounding rectangle of 4 inputted coordinates
+    public static Mat getRectCropped(Mat image, int[][] bounds) {
+        int minY = bounds[0][1];
+        int minX = bounds[0][0];
+        int maxY = bounds[0][1];
+        int maxX = bounds[0][0];
+
+        for (int[] corner: bounds) {
+            if (corner[0] > maxX)
+                maxX = corner[0];
+            else if (corner[0] < minX)
+                minX = corner[0];
+
+            if (corner[0] > maxY)
+                maxY = corner[0];
+            else if (corner[0] < minY)
+                minY = corner[0];
+        }
+        Rect boundingRect = new Rect(minX, minY, maxX - minX, maxY - minY);
+
+        return new Mat(image, boundingRect);
     }
 
     public static int[][] getBinaryArray(Mat m) {
