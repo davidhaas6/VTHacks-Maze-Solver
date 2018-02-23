@@ -1,5 +1,6 @@
 package com.davidhaas.mazesolver;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,6 +15,7 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -23,6 +25,7 @@ import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -30,9 +33,10 @@ import org.opencv.imgproc.Imgproc;
 import java.nio.IntBuffer;
 import java.util.Stack;
 
-public class CornerSelectActivity extends AppCompatActivity {
+public class CornerSelectActivity extends Activity {
 
     private static final String TAG = "CornerSelectActivity";
+
 
     Bitmap image;
     ImageView imageView;
@@ -46,6 +50,10 @@ public class CornerSelectActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Removes the title bar
+        this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
         setContentView(R.layout.activity_corner_select);
 
         // Loads the intent as a bitmap
@@ -53,7 +61,7 @@ public class CornerSelectActivity extends AppCompatActivity {
         imgPath = intent.getStringExtra(MainActivity.IMAGE_FILE);
         image = rotateBitmap(BitmapFactory.decodeFile(imgPath), 90);
 
-        // image = scaleBMP(image, 0.5);
+        image = getResizedBitmap(image, .5f);
 
         // Scales and set the bitmap
         imageView = findViewById(R.id.imageView);
@@ -67,14 +75,17 @@ public class CornerSelectActivity extends AppCompatActivity {
         int height = displayMetrics.heightPixels;
 
         view_scale_ratio = (double) image.getHeight() / height;
+        Log.i(TAG, "onCreate: Screen Height: " + height);
+        Log.i(TAG, "onCreate: getStatusBarHeight: " + getStatusBarHeight());
+
+        Log.i(TAG, "onCreate: left: " + imageView.getLeft());
+        Log.i(TAG, "onCreate: top: " + imageView.getTop());
 
         // Initializes the variables
         corners = new int[4][2];
 
         // Finds the vertical offset on the image due to the menu bar
-        vert_offset = getToolBarHeight();
-        Log.i(TAG, "onCreate: " + vert_offset);
-
+        vert_offset = getStatusBarHeight();
 
         imageView.setOnTouchListener(new View.OnTouchListener() {
             private int corner_count = 0;
@@ -89,8 +100,10 @@ public class CornerSelectActivity extends AppCompatActivity {
 
                     if (corner_count < 4) {
                         //TODO: Make circle objects that you can move
-                        corners[corner_count] = new int[]{x, y + vert_offset};
+                        corners[corner_count] = new int[]{x, y + getStatusBarHeight()};
                         corner_count++;
+
+                        Log.i(TAG, "onTouch: " + printArr(corners));
 
                         if (corner_count == 4) {
                             corners = CVUtils.orderPoints(corners);
@@ -118,6 +131,22 @@ public class CornerSelectActivity extends AppCompatActivity {
 
         Utils.matToBitmap(mat, scaled);
         return scaled;
+    }
+
+    public Bitmap getResizedBitmap(Bitmap bm, float scale) {
+        int width = bm.getWidth();
+        int height = bm.getHeight();
+
+        // CREATE A MATRIX FOR THE MANIPULATION
+        Matrix matrix = new Matrix();
+        // RESIZE THE BIT MAP
+        matrix.postScale(scale,scale);
+
+        // "RECREATE" THE NEW BITMAP
+        Bitmap resizedBitmap = Bitmap.createBitmap(
+                bm, 0, 0, width, height, matrix, false);
+        bm.recycle();
+        return resizedBitmap;
     }
 
     // Applies a perspective transform and adaptive gaussian threshold to get the deskewed matrix of
@@ -162,18 +191,23 @@ public class CornerSelectActivity extends AppCompatActivity {
         Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
         Utils.bitmapToMat(bmp32, img_matrix);
 
-        // Applies a 4 point transform to the image
-        img_matrix = CVUtils.getRectCropped(img_matrix, corners);
-
         Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
+
+        // Applies a 4 point transform to the image
+
+        //Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
 
         Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15, 15), 0);
 
         Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
 
+        img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
+
         int[][] arr = CVUtils.getBinaryArray(img_matrix);
 
-        Log.i(TAG, "getDeskewedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
+        Log.i(TAG, "getCroppedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
+
+        displayMat(img_matrix);
 
         return arr;
     }
@@ -189,18 +223,18 @@ public class CornerSelectActivity extends AppCompatActivity {
 
         // Runs A* on the maze and gets the solution stack
         //TODO: Multithread A*?
-        Asolution mySol = new Asolution(deskewedMatrix);
-        Stack<int[]> solution = mySol.getPath();
-
-        if (solution == null) {
-            Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
-            Log.e(TAG, "solveMaze: " + "Could not solve maze");
-
-            return false;
-        }
-        Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
-
-        drawSolution(solution, deskewedMatrix);
+//        Asolution mySol = new Asolution(deskewedMatrix);
+//        Stack<int[]> solution = mySol.getPath();
+//
+//        if (solution == null) {
+//            Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
+//            Log.e(TAG, "solveMaze: " + "Could not solve maze");
+//
+//            return false;
+//        }
+//        Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
+//
+//        drawSolution(solution, deskewedMatrix);
         return true;
     }
 
@@ -217,7 +251,7 @@ public class CornerSelectActivity extends AppCompatActivity {
 
         // Colors the solution  re
         int color, a;
-        final int r = 255, g = 0, b = 0;
+        final int r = 255;
         for (int i = 0; i < mazetrix.length; i++) {
             for (int j = 0; j < mazetrix[0].length; j++) {
 
@@ -239,24 +273,26 @@ public class CornerSelectActivity extends AppCompatActivity {
         // vector is your int[] of ARGB
         solution.copyPixelsFromBuffer(IntBuffer.wrap(pixels));
 
-        // https://docs.opencv.org/java/2.4.9/org/opencv/android/Utils.html#bitmapToMat(Bitmap,%20org.opencv.core.Mat,%20boolean)
-        Mat img_matrix = new Mat();
-        Bitmap bmp32 = solution.copy(Bitmap.Config.ARGB_8888, true);
-        Utils.bitmapToMat(bmp32, img_matrix, true);
-
-//        // Scales the image back to normal
-//        Mat skew_matrix = new Mat(img_matrix.rows() * scale, img_matrix.cols() * scale, img_matrix.type());
-//        Imgproc.resize(img_matrix, skew_matrix, skew_matrix.size());
-
-        //  img_matrix = CVUtils.fourPointTransform(img_matrix, corners, true);
-
-        Bitmap skewed_solution = Bitmap.createBitmap(img_matrix.cols(), img_matrix.rows(), Bitmap.Config.ARGB_8888);
-
-        Utils.matToBitmap(img_matrix, skewed_solution, true);
+//        // https://docs.opencv.org/java/2.4.9/org/opencv/android/Utils.html#bitmapToMat(Bitmap,%20org.opencv.core.Mat,%20boolean)
+//        Mat img_matrix = new Mat();
+//        Bitmap bmp32 = solution.copy(Bitmap.Config.ARGB_8888, true);
+//        Utils.bitmapToMat(bmp32, img_matrix, true);
+//
+////        // Scales the image back to normal
+////        Mat skew_matrix = new Mat(img_matrix.rows() * scale, img_matrix.cols() * scale, img_matrix.type());
+////        Imgproc.resize(img_matrix, skew_matrix, skew_matrix.size());
+//
+//        //  img_matrix = CVUtils.fourPointTransform(img_matrix, corners, true);
+//
+//        Bitmap skewed_solution = Bitmap.createBitmap(img_matrix.cols(), img_matrix.rows(), Bitmap.Config.ARGB_8888);
+//
+//        Utils.matToBitmap(img_matrix, skewed_solution, true);
 
         //TODO: skewed solution isn't drawing
-        putOverlay(image, solution, corners[0][0], corners[0][1]);
-        putOverlay(image, skewed_solution, corners[0][0], corners[0][1]);
+        Rect boundingRect = CVUtils.getBoundingRect(corners);
+
+        putOverlay(image, solution, boundingRect.x, boundingRect.y);
+        //putOverlay(image, skewed_solution, corners[0][0], corners[0][1]);
         imageView.setImageBitmap(image);
     }
 
@@ -318,5 +354,14 @@ public class CornerSelectActivity extends AppCompatActivity {
             return TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
         }
         return -1;
+    }
+
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
     }
 }

@@ -1,9 +1,15 @@
 package com.davidhaas.mazesolver;
 
+import android.util.Log;
+
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.core.Core;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
@@ -11,15 +17,20 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.opencv.core.CvType.CV_8U;
+import static org.opencv.core.CvType.CV_8UC1;
 import static org.opencv.imgproc.Imgproc.BORDER_TRANSPARENT;
 import static org.opencv.imgproc.Imgproc.INTER_LINEAR;
 import static org.opencv.imgproc.Imgproc.WARP_INVERSE_MAP;
+import static org.opencv.imgproc.Imgproc.boundingRect;
 
 /**
  * Created by david on 2/18/18.
  */
 
 public class CVUtils {
+
+    private static final String TAG = "CVUtils";
 
     public static int[][] orderPoints(int[][] pts) {
         // Orders a set of coordinates in a 4x2 array such that:
@@ -109,27 +120,47 @@ public class CVUtils {
         return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
     }
 
-    // Crops an image into the surrounding rectangle of 4 inputted coordinates
-    public static Mat getRectCropped(Mat image, int[][] bounds) {
-        int minY = bounds[0][1];
-        int minX = bounds[0][0];
-        int maxY = bounds[0][1];
-        int maxX = bounds[0][0];
+    public static Rect getBoundingRect(int[][] bounds) {
+        bounds = orderPoints(bounds);
+        Point[] corners = new Point[4];
+        for(int i=0; i < 4; i++)
+            corners[i] = new Point(bounds[i][0], bounds[i][1]);
 
-        for (int[] corner: bounds) {
-            if (corner[0] > maxX)
-                maxX = corner[0];
-            else if (corner[0] < minX)
-                minX = corner[0];
+        MatOfPoint cornerMat = new MatOfPoint(corners);
 
-            if (corner[0] > maxY)
-                maxY = corner[0];
-            else if (corner[0] < minY)
-                minY = corner[0];
-        }
-        Rect boundingRect = new Rect(minX, minY, maxX - minX, maxY - minY);
+        return boundingRect(cornerMat);
+    }
 
-        return new Mat(image, boundingRect);
+    public static Mat cropQuadrilateral(Mat image, int[][] bounds) {
+        // https://stackoverflow.com/questions/48301186/cropping-concave-polygon-from-image-using-opencv-python
+        // https://stackoverflow.com/questions/41689522/opencv-cropping-non-rectangular-region-from-image-using-c
+        bounds = orderPoints(bounds);
+        Point[] corners = new Point[4];
+        for(int i=0; i < 4; i++)
+            corners[i] = new Point(bounds[i][0], bounds[i][1]);
+
+        // Swaps the bottom two corners so that the order is: tl, tr, br, bl. This is necessary to
+        // construct an accurate polygon (otherwise it would just draw an hourglass)
+        final Point temp = corners[2];
+        corners[2] = corners[3];
+        corners[3] = temp;
+
+        MatOfPoint cornerMat = new MatOfPoint(corners);
+
+        //Mat mask = Mat.zeros(image.size(), image.type());
+        Mat mask8 = Mat.zeros(image.size(), CV_8UC1);
+
+        Log.i(TAG, "cropQuadrilateral: Calculating poly");
+
+        //Core.fillConvexPoly(mask, cornerMat, new Scalar(255,255,255));
+        Core.fillConvexPoly(mask8, cornerMat, new Scalar(255,255,255));
+
+        Log.i(TAG, "cropQuadrilateral: Masking Image");
+        Mat result = new Mat(image.size(), image.type(), new Scalar(255,255,255));
+        image.copyTo(result, mask8);
+        //Core.bitwise_and(image,mask,result,mask8);
+
+        return result.submat(boundingRect(cornerMat));
     }
 
     public static int[][] getBinaryArray(Mat m) {
