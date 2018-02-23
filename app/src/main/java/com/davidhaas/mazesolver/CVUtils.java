@@ -150,16 +150,16 @@ public class CVUtils {
         //Mat mask = Mat.zeros(image.size(), image.type());
         Mat mask8 = Mat.zeros(image.size(), CV_8UC1);
 
-        Log.i(TAG, "cropQuadrilateral: Calculating poly");
+        // Log.i(TAG, "cropQuadrilateral: Calculating poly");
 
         //Core.fillConvexPoly(mask, cornerMat, new Scalar(255,255,255));
         Core.fillConvexPoly(mask8, cornerMat, new Scalar(255,255,255));
 
-        Log.i(TAG, "cropQuadrilateral: Masking Image");
+        // Log.i(TAG, "cropQuadrilateral: Masking Image");
         Mat result = new Mat(image.size(), image.type(), new Scalar(255,255,255));
         image.copyTo(result, mask8);
         //Core.bitwise_and(image,mask,result,mask8);
-
+        Log.i(TAG, "cropQuadrilateral: " + cornerMat);
         return result.submat(boundingRect(cornerMat));
     }
 

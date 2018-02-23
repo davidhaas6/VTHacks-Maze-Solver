@@ -16,6 +16,7 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -36,11 +37,12 @@ import java.util.Stack;
 public class CornerSelectActivity extends Activity {
 
     private static final String TAG = "CornerSelectActivity";
-
-
     Bitmap image;
     ImageView imageView;
+    SelectionBox selectionBox;
+    Button solveMazeButton;
     String imgPath;
+
 
     private int[][] corners;
     private double view_scale_ratio;
@@ -68,6 +70,10 @@ public class CornerSelectActivity extends Activity {
         imageView.setImageBitmap(image);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
+        selectionBox = findViewById(R.id.selectionBox);
+        solveMazeButton = findViewById(R.id.solveMaze);
+
+
         // Gets the ratio between the appeared image height and the actual height so we can map
         // screen touches to pixels on the image
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -78,44 +84,82 @@ public class CornerSelectActivity extends Activity {
         Log.i(TAG, "onCreate: Screen Height: " + height);
         Log.i(TAG, "onCreate: getStatusBarHeight: " + getStatusBarHeight());
 
-        Log.i(TAG, "onCreate: left: " + imageView.getLeft());
-        Log.i(TAG, "onCreate: top: " + imageView.getTop());
-
         // Initializes the variables
         corners = new int[4][2];
 
         // Finds the vertical offset on the image due to the menu bar
         vert_offset = getStatusBarHeight();
 
-        imageView.setOnTouchListener(new View.OnTouchListener() {
-            private int corner_count = 0;
+        solveMazeButton.setOnClickListener(new View.OnClickListener() {
             private boolean maze_solved = false;
 
             @Override
-            public boolean onTouch(View view, MotionEvent event) {
-                view.performClick();
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    int x = (int) (event.getX() * view_scale_ratio);
-                    int y = (int) (event.getY() * view_scale_ratio);
+            public void onClick(View view) {
+                if (!maze_solved) {
+                    // Closes the selection box and button
+                    selectionBox.hideView();
+                    solveMazeButton.setVisibility(View.GONE);
 
-                    if (corner_count < 4) {
-                        //TODO: Make circle objects that you can move
-                        corners[corner_count] = new int[]{x, y + getStatusBarHeight()};
-                        corner_count++;
+                    corners = CVUtils.orderPoints(selectionBox.getCornerCoords());
 
-                        Log.i(TAG, "onTouch: " + printArr(corners));
-
-                        if (corner_count == 4) {
-                            corners = CVUtils.orderPoints(corners);
-                            maze_solved = solveMaze();
-                        }
-                    } else if (!maze_solved) {
-                        maze_solved = solveMaze();
+                    Log.i(TAG, "onClick: 1: " + printArr(corners));
+                    for (int i = 0; i < 4; i++) {
+                        corners[i][0] *= view_scale_ratio;
+                        corners[i][1] *= view_scale_ratio;
+                        corners[i][1] += 25;
                     }
+
+                    Log.i(TAG, "onClick: 2: " + printArr(corners));
+                    maze_solved = solveMaze();
                 }
-                return false;
             }
         });
+
+//        imageView.setOnTouchListener(new View.OnTouchListener() {
+//            private int corner_count = 0;
+//            private boolean maze_solved = false;
+//
+//            @Override
+//            public boolean onTouch(View view, MotionEvent event) {
+//                view.performClick();
+//                selectionBox.onTouchEvent(event);
+//                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+//                    int x = (int) (event.getX() * view_scale_ratio);
+//                    int y = (int) (event.getY() * view_scale_ratio);
+//
+//                    if (corner_count < 4) {
+//                        //TODO: Make circle objects that you can move
+//                        corners[corner_count] = new int[]{x, y};
+//                        //drawCircle(x,y);
+//                        //corner_count++;
+//
+//                        Log.i(TAG, "onTouch: " + printArr(corners));
+//
+//                        if (corner_count == 4) {
+//                            corners = CVUtils.orderPoints(corners);
+//                            maze_solved = solveMaze();
+//                        }
+//                    } else if (!maze_solved) {
+//                        maze_solved = solveMaze();
+//                    }
+//                }
+//                return false;
+//            }
+//        });
+    }
+
+    public void drawCircle(int cx, int cy) {
+        final float radius = image.getWidth() * .05f;
+        Canvas canvas = new Canvas(image);
+
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(5);
+
+        canvas.drawCircle(cx, cy, radius, paint);
+        imageView.invalidate();
+        imageView.setImageBitmap(image);
+
     }
 
     public Bitmap scaleBMP(Bitmap bmp, double scale) {
@@ -207,7 +251,7 @@ public class CornerSelectActivity extends Activity {
 
         Log.i(TAG, "getCroppedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
 
-        displayMat(img_matrix);
+        //displayMat(img_matrix);
 
         return arr;
     }
@@ -215,7 +259,6 @@ public class CornerSelectActivity extends Activity {
 
     // Runs the maze solving methods
     public boolean solveMaze() {
-        //TODO: Maybe don't transform and just crop????
 
         // Returns a deskewed and cropped maze
         // int[][] deskewedMatrix = getDeskewedMatrix(corners);
@@ -223,18 +266,20 @@ public class CornerSelectActivity extends Activity {
 
         // Runs A* on the maze and gets the solution stack
         //TODO: Multithread A*?
-//        Asolution mySol = new Asolution(deskewedMatrix);
-//        Stack<int[]> solution = mySol.getPath();
-//
-//        if (solution == null) {
-//            Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
-//            Log.e(TAG, "solveMaze: " + "Could not solve maze");
-//
-//            return false;
-//        }
-//        Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
-//
-//        drawSolution(solution, deskewedMatrix);
+
+        //TODO: Entrance-finding doens't work if they're on the top and bottom
+        Asolution mySol = new Asolution(deskewedMatrix);
+        Stack<int[]> solution = mySol.getPath();
+
+        if (solution == null) {
+            Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
+            Log.e(TAG, "solveMaze: " + "Could not solve maze");
+
+            return false;
+        }
+        Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
+
+        drawSolution(solution, deskewedMatrix);
         return true;
     }
 
