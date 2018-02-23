@@ -41,7 +41,7 @@ public class CornerSelectActivity extends AppCompatActivity {
     private int[][] corners;
     private double view_scale_ratio;
     int vert_offset;
-    private final int scale = 1;
+    //private final int scale = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +66,7 @@ public class CornerSelectActivity extends AppCompatActivity {
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
         int height = displayMetrics.heightPixels;
 
-        view_scale_ratio = (double)image.getHeight() / height;
+        view_scale_ratio = (double) image.getHeight() / height;
 
         // Initializes the variables
         corners = new int[4][2];
@@ -87,16 +87,16 @@ public class CornerSelectActivity extends AppCompatActivity {
                     int x = (int) (event.getX() * view_scale_ratio);
                     int y = (int) (event.getY() * view_scale_ratio);
 
-                    if(corner_count < 4) {
+                    if (corner_count < 4) {
                         //TODO: Make circle objects that you can move
-                        corners[corner_count] = new int[]{x,y+vert_offset};
+                        corners[corner_count] = new int[]{x, y + vert_offset};
                         corner_count++;
 
                         if (corner_count == 4) {
                             corners = CVUtils.orderPoints(corners);
                             maze_solved = solveMaze();
                         }
-                    } else if(!maze_solved) {
+                    } else if (!maze_solved) {
                         maze_solved = solveMaze();
                     }
                 }
@@ -120,9 +120,9 @@ public class CornerSelectActivity extends AppCompatActivity {
         return scaled;
     }
 
-    // Applies a perspective transform and adaptive gausian threshold to get the deskewed matrix of
+    // Applies a perspective transform and adaptive gaussian threshold to get the deskewed matrix of
     // binary (0 or 1) values. 1s represent walls and 0s are paths.
-    public int[][] getDeskewedMatrix(int[][] corners, String path){
+    public int[][] getDeskewedMatrix(int[][] corners) {
 
         // Converts the bitmap to an OpenCV matrix
         Mat img_matrix = new Mat();
@@ -140,7 +140,7 @@ public class CornerSelectActivity extends AppCompatActivity {
         // Converts it to gray
         Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
 
-        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15,15), 0);
+        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15, 15), 0);
 
         // Applies an adaptive Gaussian threshold to the matrix
         Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
@@ -153,26 +153,55 @@ public class CornerSelectActivity extends AppCompatActivity {
         return arr;
     }
 
+    // Crops the image in a rectangle bounding the corners and applies a threshold to obtain binary
+    // values. 1s represent walls and 0s are paths.
+    public int[][] getCroppedMatrix(int[][] corners) {
+
+        // Converts the bitmap to an OpenCV matrix
+        Mat img_matrix = new Mat();
+        Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
+        Utils.bitmapToMat(bmp32, img_matrix);
+
+        // Applies a 4 point transform to the image
+        img_matrix = CVUtils.getRectCropped(img_matrix, corners);
+
+        Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
+
+        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15, 15), 0);
+
+        Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
+
+        int[][] arr = CVUtils.getBinaryArray(img_matrix);
+
+        Log.i(TAG, "getDeskewedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
+
+        return arr;
+    }
+
+
     // Runs the maze solving methods
     public boolean solveMaze() {
+        //TODO: Maybe don't transform and just crop????
+
         // Returns a deskewed and cropped maze
-        int[][] deskewedMatrix = getDeskewedMatrix(corners, imgPath);
+        // int[][] deskewedMatrix = getDeskewedMatrix(corners);
+        int[][] deskewedMatrix = getCroppedMatrix(corners);
 
         // Runs A* on the maze and gets the solution stack
         //TODO: Multithread A*?
         Asolution mySol = new Asolution(deskewedMatrix);
         Stack<int[]> solution = mySol.getPath();
 
-        if (solution == null){
+        if (solution == null) {
             Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
-            Log.e(TAG, "solveMaze: " + "Could not solve maze" );
+            Log.e(TAG, "solveMaze: " + "Could not solve maze");
 
             return false;
         }
         Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
 
         drawSolution(solution, deskewedMatrix);
-       return true;
+        return true;
     }
 
     // Writes the solution to the deskewed matrix, and writes a bitmap image in which all the
@@ -182,51 +211,52 @@ public class CornerSelectActivity extends AppCompatActivity {
     public void drawSolution(Stack<int[]> path, int[][] mazetrix) {
 
         // Sets the value of the solution pixels to 2
-        for(int[] coords : path)
-        {
+        for (int[] coords : path) {
             mazetrix[coords[0]][coords[1]] = 2;
         }
 
-        // Colors the solution
-        int color, a,r = 255,g = 0, b = 0;
-        for(int i = 0; i < mazetrix.length; i++) {
+        // Colors the solution  re
+        int color, a;
+        final int r = 255, g = 0, b = 0;
+        for (int i = 0; i < mazetrix.length; i++) {
             for (int j = 0; j < mazetrix[0].length; j++) {
 
                 // If pixel is part of the solution, make the color opaque red, otherwise transparent
-                if (mazetrix[i][j] == 2){
+                if (mazetrix[i][j] == 2) {
                     a = 255;
                 } else {
                     a = 0;
                 }
-                // Encodes it in sRGB color space
-                color = (a & 0xff) << 24 | (r & 0xff) << 16 | (g & 0xff) << 8 | (b & 0xff);
+                // Encodes it in hexadecimal sRGB color space
+                color = (a & 0xff) << 24 | (r & 0xff) << 16;
                 mazetrix[i][j] = color;
             }
         }
 
-        // TODO: Reverse transform
         int[] pixels = get1DArray(mazetrix, 1);
 
         Bitmap solution = Bitmap.createBitmap(mazetrix[0].length, mazetrix.length, Bitmap.Config.ARGB_8888);
         // vector is your int[] of ARGB
         solution.copyPixelsFromBuffer(IntBuffer.wrap(pixels));
 
+        // https://docs.opencv.org/java/2.4.9/org/opencv/android/Utils.html#bitmapToMat(Bitmap,%20org.opencv.core.Mat,%20boolean)
         Mat img_matrix = new Mat();
         Bitmap bmp32 = solution.copy(Bitmap.Config.ARGB_8888, true);
-        Utils.bitmapToMat(bmp32, img_matrix);
+        Utils.bitmapToMat(bmp32, img_matrix, true);
 
-        Mat skew_matrix = new Mat(img_matrix.rows() * scale, img_matrix.cols() * scale, img_matrix.type());
-        Imgproc.resize(img_matrix, skew_matrix, skew_matrix.size());
+//        // Scales the image back to normal
+//        Mat skew_matrix = new Mat(img_matrix.rows() * scale, img_matrix.cols() * scale, img_matrix.type());
+//        Imgproc.resize(img_matrix, skew_matrix, skew_matrix.size());
 
-        //skew_matrix = CVUtils.fourPointTransform(skew_matrix, corners, true);
+        //  img_matrix = CVUtils.fourPointTransform(img_matrix, corners, true);
 
-        Bitmap skewed_solution = Bitmap.createBitmap(skew_matrix.cols(), skew_matrix.rows(), Bitmap.Config.ARGB_8888);
+        Bitmap skewed_solution = Bitmap.createBitmap(img_matrix.cols(), img_matrix.rows(), Bitmap.Config.ARGB_8888);
 
-        Utils.matToBitmap(skew_matrix, skewed_solution);
-        Bitmap s_soln = skewed_solution;
+        Utils.matToBitmap(img_matrix, skewed_solution, true);
 
+        //TODO: skewed solution isn't drawing
         putOverlay(image, solution, corners[0][0], corners[0][1]);
-        putOverlay(image, s_soln, corners[0][0], corners[0][1]);
+        putOverlay(image, skewed_solution, corners[0][0], corners[0][1]);
         imageView.setImageBitmap(image);
     }
 
@@ -239,14 +269,13 @@ public class CornerSelectActivity extends AppCompatActivity {
     public void displayMat(Mat mat) {
         Bitmap bmp = null;
 
-        Mat tmp = new Mat (image.getHeight(), image.getWidth(), CvType.CV_8U, new Scalar(4));
+        Mat tmp = new Mat(image.getHeight(), image.getWidth(), CvType.CV_8U, new Scalar(4));
         try {
             Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
             bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(tmp, bmp);
-        }
-        catch (CvException e){
-            Log.d("Exception",e.getMessage());
+        } catch (CvException e) {
+            Log.d("Exception", e.getMessage());
         }
         imageView.setImageBitmap(bmp);
     }
@@ -254,8 +283,8 @@ public class CornerSelectActivity extends AppCompatActivity {
     public String printArr(int[][] arr) {
         StringBuilder sb = new StringBuilder();
 
-        for(int q = 0; q < arr.length; q++){
-            for (int h = 0; h < arr[q].length; h++){
+        for (int q = 0; q < arr.length; q++) {
+            for (int h = 0; h < arr[q].length; h++) {
                 sb.append(arr[q][h]);
                 sb.append(", ");
             }
@@ -268,8 +297,8 @@ public class CornerSelectActivity extends AppCompatActivity {
         int[] ret = new int[arr.length * arr[0].length * numChannels];
         int count = 0;
 
-        for(int i = 0; i < arr.length; i++){
-            for(int j = 0; j < arr[0].length; j++) {
+        for (int i = 0; i < arr.length; i++) {
+            for (int j = 0; j < arr[0].length; j++) {
                 ret[count] = arr[i][j];
                 count += 1;
             }
@@ -286,7 +315,7 @@ public class CornerSelectActivity extends AppCompatActivity {
     public int getToolBarHeight() {
         TypedValue tv = new TypedValue();
         if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-            return TypedValue.complexToDimensionPixelSize(tv.data,getResources().getDisplayMetrics());
+            return TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
         }
         return -1;
     }
