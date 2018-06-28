@@ -25,7 +25,10 @@ import static org.opencv.imgproc.Imgproc.WARP_INVERSE_MAP;
 import static org.opencv.imgproc.Imgproc.boundingRect;
 
 /**
- * Created by david on 2/18/18.
+ * Name: CVUtils
+ * Purpose: A collection of methods to process the maze image for solving
+ * Author: David Haas
+ * Last updated: 6/28/18
  */
 
 public class CVUtils {

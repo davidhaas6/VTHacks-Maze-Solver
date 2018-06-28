@@ -34,6 +34,13 @@ import org.opencv.imgproc.Imgproc;
 import java.nio.IntBuffer;
 import java.util.Stack;
 
+/**
+ * Name: CornerSelectActivity
+ * Purpose: Provides an interface for the user to select the bounds of the maze
+ * Author: David Haas
+ * Last updated: 6/28/18
+ */
+
 public class CornerSelectActivity extends Activity {
 
     private static final String TAG = "CornerSelectActivity";

@@ -25,6 +25,13 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+/**
+ * Name: CornerSelectActivity
+ * Purpose: Provides an interface for the user to take a picture of a maze.
+ * Author: David Haas
+ * Last updated: 6/28/18
+ */
+
 public class MainActivity extends AppCompatActivity {
 
     static {
