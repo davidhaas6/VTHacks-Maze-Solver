@@ -18,14 +18,13 @@ class Dot extends View {
     private int RADIUS;
     private int x;
     private int y;
-    private Rect boundingBox;
-    private int feather;
+    private Rect boundingBox;  // The area that the user can interact with the dot
+    private int feather;  // Allows for a bigger bounding box than the actual shape
     private int initialX;
     private int initialY;
     private int offsetX;
     private int offsetY;
     private Paint myPaint;
-    private Paint rPaint;
 
 
     private static String TAG = "Dot";
@@ -55,10 +54,6 @@ class Dot extends View {
         myPaint = new Paint();
         myPaint.setColor(Color.argb(255, 153,153,255));
         myPaint.setAntiAlias(true);
-
-        rPaint = new Paint();
-        rPaint.setStyle(Paint.Style.STROKE);
-        rPaint.setColor(Color.RED);
     }
 
     public boolean onTouchEvent(MotionEvent event) {
@@ -70,6 +65,7 @@ class Dot extends View {
                 touch = new Point((int) event.getX(), (int) event.getY());
                 // Log.i(TAG, "onTouchEvent: " + touch);
 
+                // If the touch is within the dot, record the initial starting points
                 if (boundingBox.contains(touch.x, touch.y)) {
                     initialX = x;
                     initialY = y;
@@ -81,12 +77,13 @@ class Dot extends View {
 
             case MotionEvent.ACTION_MOVE:
             case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_CANCEL: //TODO: Probably not the right event to use?
                 touch = new Point((int) event.getX(), (int) event.getY());
                 if (boundingBox.contains(touch.x, touch.y)) {
                     //Log.i(TAG, "onTouchEvent: " + touch);
                     //Log.i(TAG, "onTouchEvent: " + boundingBox);
 
+                    // Drags the dot
                     x = initialX + touch.x - offsetX;
                     y = initialY + touch.y - offsetY;
                     boundingBox.offsetTo(x - (RADIUS + feather), y - (RADIUS + feather));

@@ -36,17 +36,15 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MyActivity";
 
-
-    Button takePhotoButton;
-
+    private String mCurrentPhotoPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Mat m = new Mat(100, 100, CvType.CV_8UC4);
-        takePhotoButton = findViewById(R.id.takePhotoButton);
+        // Creates the button with its listener
+        Button takePhotoButton = findViewById(R.id.takePhotoButton);
 
         takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -57,9 +55,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void dispatchTakePictureIntent() {
+
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
         // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+
             // Create the File where the photo should go
             File photoFile = null;
             try {
@@ -68,24 +69,24 @@ public class MainActivity extends AppCompatActivity {
                 // Error occurred while creating the File
                 Log.e(TAG, "dispatchTakePictureIntent: " + "Error Creating file");
             }
+
             // Continue only if the File was successfully created
             if (photoFile != null) {
                 Uri photoURI = FileProvider.getUriForFile(this,
                         "com.davidhaas.mazesolver",
                         photoFile);
+
+                // Takes the picture
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
-
             }
         }
     }
 
-    String mCurrentPhotoPath;
-
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_";
+        String imageFileName = "MAZE_" + timeStamp + "_";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File image = File.createTempFile(
                 imageFileName,  /* prefix */
@@ -101,10 +102,7 @@ public class MainActivity extends AppCompatActivity {
         // Log.i(TAG, "uri: " + uri);
 
         //InputStream imageStream = getContentResolver().openInputStream(uri);
-
         //Bitmap myBitmap = BitmapFactory.decodeStream(imageStream);
-
-
 
         return image;
     }
@@ -113,6 +111,8 @@ public class MainActivity extends AppCompatActivity {
                                     Intent data) {
         if (requestCode == REQUEST_TAKE_PHOTO) {
             if (resultCode == RESULT_OK) {
+
+                // Starts the CornerSelectActivity
                 Intent intent = new Intent(this, CornerSelectActivity.class);
                 intent.putExtra(IMAGE_FILE, mCurrentPhotoPath);
 

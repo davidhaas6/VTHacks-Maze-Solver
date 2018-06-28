@@ -20,7 +20,7 @@ public class SelectionBox extends View {
         super(context, attrs);
         final int radius = 30;
         bPaint = new Paint();
-        bPaint.setColor(Color.argb(210, 204,230,153));
+        bPaint.setColor(Color.argb(210, 204, 230, 153));
         bPaint.setStyle(Paint.Style.STROKE);
         bPaint.setStrokeWidth(8);
 
@@ -32,24 +32,25 @@ public class SelectionBox extends View {
     }
 
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
+        //int action = event.getAction();
         // Log.i(TAG, "onTouchEvent: Touched!");
-        for (int i=0;i<4;i++){
+        for (int i = 0; i < 4; i++) {
             corners[i].onTouchEvent(event);
         }
-        return (true);
+        return true;
     }
 
     public void draw(Canvas canvas) {
         super.draw(canvas);
 
+        // Draws the lines connecting the dots
         Path borders = new Path();
         borders.reset(); // only needed when reusing this path for a new build
 
         Point loc, topLeft = corners[0].getLocation();
         borders.moveTo(topLeft.x, topLeft.y); // used for first point
 
-        for(int i=1; i < 4; i++){
+        for (int i = 1; i < 4; i++) {
             loc = corners[i].getLocation();
             borders.lineTo(loc.x, loc.y);
         }
@@ -58,23 +59,27 @@ public class SelectionBox extends View {
 
         canvas.drawPath(borders, bPaint);
 
-        for (int i=0;i<4;i++){
+        // Draws each of the dots
+        for (int i = 0; i < 4; i++) {
             corners[i].draw(canvas);
         }
         invalidate();
     }
 
-    public int[][] getCornerCoords(){
+    // Returns the x-y coordinates of the corners
+    public int[][] getCornerCoords() {
         int[][] coords = new int[4][2];
         Point coord;
-        for (int i = 0; i < 4; i++){
+
+        for (int i = 0; i < 4; i++) {
             coord = corners[i].getLocation();
             coords[i] = new int[]{coord.x, coord.y};
         }
+
         return coords;
     }
 
-    public void hideView(){
+    public void hideView() {
         setVisibility(View.GONE);
     }
 }

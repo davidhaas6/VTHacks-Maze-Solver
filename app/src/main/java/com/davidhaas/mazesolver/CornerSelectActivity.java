@@ -49,6 +49,8 @@ public class CornerSelectActivity extends Activity {
     int vert_offset;
     //private final int scale = 1;
 
+    //TODO: Move solution etc into new activity
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,38 +59,32 @@ public class CornerSelectActivity extends Activity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         setContentView(R.layout.activity_corner_select);
+        selectionBox = findViewById(R.id.selectionBox);
+        solveMazeButton = findViewById(R.id.solveMaze);
 
-        // Loads the intent as a bitmap
+        // Loads the intent image as a bitmap for processing
         Intent intent = getIntent();
         imgPath = intent.getStringExtra(MainActivity.IMAGE_FILE);
         image = rotateBitmap(BitmapFactory.decodeFile(imgPath), 90);
 
-        image = getResizedBitmap(image, .5f);
-
         // Scales and set the bitmap
+        image = getResizedBitmap(image, .5f); // For efficiency
         imageView = findViewById(R.id.imageView);
         imageView.setImageBitmap(image);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-
-        selectionBox = findViewById(R.id.selectionBox);
-        solveMazeButton = findViewById(R.id.solveMaze);
-
 
         // Gets the ratio between the appeared image height and the actual height so we can map
         // screen touches to pixels on the image
         DisplayMetrics displayMetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        int height = displayMetrics.heightPixels;
+        vert_offset = getStatusBarHeight();  // Finds the vertical offset on the image due to the menu bar
 
-        view_scale_ratio = (double) image.getHeight() / height;
-        Log.i(TAG, "onCreate: Screen Height: " + height);
+        view_scale_ratio = (double) image.getHeight() / displayMetrics.heightPixels;
+        Log.i(TAG, "onCreate: Screen Height: " + displayMetrics.heightPixels);
         Log.i(TAG, "onCreate: getStatusBarHeight: " + getStatusBarHeight());
 
-        // Initializes the variables
-        corners = new int[4][2];
 
-        // Finds the vertical offset on the image due to the menu bar
-        vert_offset = getStatusBarHeight();
+        corners = new int[4][2];  // Initializes the variables to store the corners of the maze
 
         solveMazeButton.setOnClickListener(new View.OnClickListener() {
             private boolean maze_solved = false;
@@ -96,6 +92,7 @@ public class CornerSelectActivity extends Activity {
             @Override
             public void onClick(View view) {
                 if (!maze_solved) {
+
                     // Closes the selection box and button
                     selectionBox.hideView();
                     solveMazeButton.setVisibility(View.GONE);
@@ -115,66 +112,6 @@ public class CornerSelectActivity extends Activity {
             }
         });
 
-//        imageView.setOnTouchListener(new View.OnTouchListener() {
-//            private int corner_count = 0;
-//            private boolean maze_solved = false;
-//
-//            @Override
-//            public boolean onTouch(View view, MotionEvent event) {
-//                view.performClick();
-//                selectionBox.onTouchEvent(event);
-//                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-//                    int x = (int) (event.getX() * view_scale_ratio);
-//                    int y = (int) (event.getY() * view_scale_ratio);
-//
-//                    if (corner_count < 4) {
-//                        //TODO: Make circle objects that you can move
-//                        corners[corner_count] = new int[]{x, y};
-//                        //drawCircle(x,y);
-//                        //corner_count++;
-//
-//                        Log.i(TAG, "onTouch: " + printArr(corners));
-//
-//                        if (corner_count == 4) {
-//                            corners = CVUtils.orderPoints(corners);
-//                            maze_solved = solveMaze();
-//                        }
-//                    } else if (!maze_solved) {
-//                        maze_solved = solveMaze();
-//                    }
-//                }
-//                return false;
-//            }
-//        });
-    }
-
-    public void drawCircle(int cx, int cy) {
-        final float radius = image.getWidth() * .05f;
-        Canvas canvas = new Canvas(image);
-
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(5);
-
-        canvas.drawCircle(cx, cy, radius, paint);
-        imageView.invalidate();
-        imageView.setImageBitmap(image);
-
-    }
-
-    public Bitmap scaleBMP(Bitmap bmp, double scale) {
-        Mat mat = new Mat();
-        Bitmap bmp32 = bmp.copy(Bitmap.Config.ARGB_8888, true);
-        Utils.bitmapToMat(bmp32, mat);
-        Log.i(TAG, "scaleBMP: 1 " + mat.size());
-
-        Imgproc.resize(mat.clone(), mat, new Size((int) (mat.cols() * scale), (int) (mat.rows() * scale)));
-
-        Bitmap scaled = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
-        Log.i(TAG, "scaleBMP: 2 " + mat.size());
-
-        Utils.matToBitmap(mat, scaled);
-        return scaled;
     }
 
     public Bitmap getResizedBitmap(Bitmap bm, float scale) {
@@ -193,39 +130,6 @@ public class CornerSelectActivity extends Activity {
         return resizedBitmap;
     }
 
-    // Applies a perspective transform and adaptive gaussian threshold to get the deskewed matrix of
-    // binary (0 or 1) values. 1s represent walls and 0s are paths.
-    public int[][] getDeskewedMatrix(int[][] corners) {
-
-        // Converts the bitmap to an OpenCV matrix
-        Mat img_matrix = new Mat();
-        Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
-        Utils.bitmapToMat(bmp32, img_matrix);
-
-        // Applies a 4 point transform to the image
-        img_matrix = CVUtils.fourPointTransform(img_matrix, corners, false);
-
-//        // Scales the image down
-//        Size orig_size = img_matrix.size();
-//        Mat small_im = new Mat(img_matrix.rows()/scale, img_matrix.cols()/scale, img_matrix.type());
-//        Imgproc.resize(img_matrix.clone(), small_im, new Size(orig_size.width / scale, orig_size.height / scale));
-
-        // Converts it to gray
-        Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
-
-        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15, 15), 0);
-
-        // Applies an adaptive Gaussian threshold to the matrix
-        Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
-
-        // Returns a 2d array in which the 1s are walls and the 0s are paths
-        int[][] arr = CVUtils.getBinaryArray(img_matrix);
-
-        Log.i(TAG, "getDeskewedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
-
-        return arr;
-    }
-
     // Crops the image in a rectangle bounding the corners and applies a threshold to obtain binary
     // values. 1s represent walls and 0s are paths.
     public int[][] getCroppedMatrix(int[][] corners) {
@@ -241,11 +145,11 @@ public class CornerSelectActivity extends Activity {
 
         //Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
 
+        img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
+
         Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15, 15), 0);
 
         Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
-
-        img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
 
         int[][] arr = CVUtils.getBinaryArray(img_matrix);
 
@@ -267,7 +171,7 @@ public class CornerSelectActivity extends Activity {
         // Runs A* on the maze and gets the solution stack
         //TODO: Multithread A*?
 
-        //TODO: Entrance-finding doens't work if they're on the top and bottom
+        //TODO: Entrance-finding doesn't work if they're on the top and bottom
         Asolution mySol = new Asolution(deskewedMatrix);
         Stack<int[]> solution = mySol.getPath();
 
@@ -391,14 +295,6 @@ public class CornerSelectActivity extends Activity {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
-    public int getToolBarHeight() {
-        TypedValue tv = new TypedValue();
-        if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-            return TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
-        }
-        return -1;
     }
 
     public int getStatusBarHeight() {
