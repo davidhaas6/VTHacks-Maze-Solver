@@ -1,9 +1,6 @@
 package com.davidhaas.mazesolver;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -13,15 +10,11 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -38,12 +31,12 @@ public class MainActivity extends AppCompatActivity {
         OpenCVLoader.initDebug();
     }
 
-    public static final String IMAGE_FILE = "com.davidhaas.mazesolver.IMAGE_FILE";
-    static final int REQUEST_TAKE_PHOTO = 1;
+    public static final String IMAGE_URI = "com.davidhaas.mazesolver.IMAGE_URI";
+    static final int REQUEST_TAKE_PHOTO = 1, REQUEST_LOAD_PHOTO = 2;
 
     private static final String TAG = "MyActivity";
 
-    private String mCurrentPhotoPath;
+    private Uri mImageURI;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,16 +45,24 @@ public class MainActivity extends AppCompatActivity {
 
         // Creates the button with its listener
         Button takePhotoButton = findViewById(R.id.takePhotoButton);
+        Button loadPhotoButton = findViewById(R.id.loadPhotoButton);
 
         takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                dispatchTakePictureIntent();
+                dispatchTakePhotoIntent();
+            }
+        });
+
+        loadPhotoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dispatchLoadPhotoIntent();
             }
         });
     }
 
-    private void dispatchTakePictureIntent() {
+    private void dispatchTakePhotoIntent() {
 
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
@@ -74,20 +75,27 @@ public class MainActivity extends AppCompatActivity {
                 photoFile = createImageFile();
             } catch (IOException ex) {
                 // Error occurred while creating the File
-                Log.e(TAG, "dispatchTakePictureIntent: " + "Error Creating file");
+                Log.e(TAG, "dispatchTakePhotoIntent: " + "Error Creating file");
             }
 
             // Continue only if the File was successfully created
             if (photoFile != null) {
-                Uri photoURI = FileProvider.getUriForFile(this,
+                mImageURI = FileProvider.getUriForFile(this,
                         "com.davidhaas.mazesolver",
                         photoFile);
 
                 // Takes the picture
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageURI);
                 startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
             }
         }
+    }
+
+    private void dispatchLoadPhotoIntent() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Choose Picture"), REQUEST_LOAD_PHOTO);
     }
 
     private File createImageFile() throws IOException {
@@ -100,30 +108,20 @@ public class MainActivity extends AppCompatActivity {
                 ".jpg",         /* suffix */
                 storageDir      /* directory */
         );
-
-        // Save a file: path for use with ACTION_VIEW intents
-        mCurrentPhotoPath = image.getAbsolutePath();
-        // Uri uri = Uri.parse("file://" + mCurrentPhotoPath);
-
-        Log.i(TAG, "mCurrentPhotoPath: " + mCurrentPhotoPath);
-        // Log.i(TAG, "uri: " + uri);
-
-        //InputStream imageStream = getContentResolver().openInputStream(uri);
-        //Bitmap myBitmap = BitmapFactory.decodeStream(imageStream);
-
         return image;
     }
 
     protected void onActivityResult(int requestCode, int resultCode,
                                     Intent data) {
-        if (requestCode == REQUEST_TAKE_PHOTO) {
-            if (resultCode == RESULT_OK) {
+        if (resultCode == RESULT_OK) {
+            Intent cornerIntent = new Intent(this, CornerSelectActivity.class);
+            if (requestCode == REQUEST_LOAD_PHOTO || requestCode == REQUEST_TAKE_PHOTO) {
+                if(requestCode == REQUEST_LOAD_PHOTO)
+                     mImageURI = data.getData();
 
-                // Starts the CornerSelectActivity
-                Intent intent = new Intent(this, CornerSelectActivity.class);
-                intent.putExtra(IMAGE_FILE, mCurrentPhotoPath);
-
-                startActivity(intent);
+                cornerIntent.putExtra(IMAGE_URI, mImageURI.toString());
+                Log.i(TAG, "onActivityResult: data extras " + mImageURI);
+                startActivity(cornerIntent);
             }
         }
     }

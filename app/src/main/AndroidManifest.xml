@@ -35,7 +35,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <activity android:name=".CornerSelectActivity"></activity>
+        <activity android:name=".CornerSelectActivity" />
+        <activity android:name=".SolutionActivity"></activity>
     </application>
 
 </manifest>

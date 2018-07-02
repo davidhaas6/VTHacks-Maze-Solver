@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">MazeSolver</string>
+    <string name="take_photo">Camera</string>
+    <string name="load_photo">Gallery</string>
 </resources>
