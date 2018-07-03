@@ -11,6 +11,13 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+/**
+ * Name: CornerSelectActivity
+ * Purpose: Connects the dots and allows the user to manipulate the selection bounds for the maze
+ * Author: David Haas
+ * Last updated: 6/28/18
+ */
+
 public class SelectionBox extends View {
     private static final String TAG = "SelectionBoxView";
     private Dot[] corners = new Dot[4];

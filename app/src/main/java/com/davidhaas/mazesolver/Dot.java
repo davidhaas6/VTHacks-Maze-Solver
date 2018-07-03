@@ -14,7 +14,14 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
-class Dot extends View {
+/**
+ * Name: Dot
+ * Purpose: Selection dots for the bounds of the maze
+ * Author: David Haas
+ * Last updated: 6/28/18
+ */
+
+public class Dot extends View {
     private int RADIUS;
     private int x;
     private int y;
