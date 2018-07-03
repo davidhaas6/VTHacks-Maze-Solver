@@ -32,31 +32,22 @@ public class CornerSelectActivity extends Activity {
 
     private static final String TAG = "CornerSelectActivity";
     public static final String CORNERS = "corners";
-    Bitmap image;
-    ImageView imageView;
-    SelectionBox selectionBox;
-    Button solveMazeButton;
-
-    private int[][] corners;
-    int vert_offset;
-    //private final int scale = 1;
-
-    //TODO: Move solution etc into new activity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Bitmap image = null;
 
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         setContentView(R.layout.activity_corner_select);
-        solveMazeButton = findViewById(R.id.solveMaze);
+        Button solveMazeButton = findViewById(R.id.solveMaze);
 
         // Loads the intent image as a bitmap for processing
         final Uri imgUri = Uri.parse(getIntent().getStringExtra(MainActivity.IMAGE_URI));
         try {
-            image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
+             image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "onCreate: Error loading image", e);
@@ -69,7 +60,7 @@ public class CornerSelectActivity extends Activity {
         // Scales and set the bitmap
         //TODO: Maybe rescale it in SolutionActivity?
         // image = getResizedBitmap(image, .5f); // For efficiency
-        imageView = findViewById(R.id.imageView);
+        ImageView imageView = findViewById(R.id.imageView);
         imageView.setImageBitmap(image);
 
         //imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -78,21 +69,26 @@ public class CornerSelectActivity extends Activity {
         // screen touches to pixels on the image
         DisplayMetrics displayMetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        vert_offset = getStatusBarHeight();  // Finds the vertical offset on the image due to the menu bar
 
-        final double view_scale_ratio = (double) image.getWidth() / displayMetrics.widthPixels;
+        // The height of the available space to show the image
         final int displayHeight = getResources().getDisplayMetrics().heightPixels - getStatusBarHeight();
+        final double view_scale_ratio = (double) image.getWidth() / displayMetrics.widthPixels;
         final int scaledImageHeight = (int) (image.getHeight() / view_scale_ratio);
-        final int croppedTops = (scaledImageHeight - displayHeight) / 2;
 
-        Log.i(TAG, "onCreate: ratio: " + view_scale_ratio);
-        Log.i(TAG, "onCreate: img cuts: " + croppedTops);
-        // https://stackoverflow.com/questions/2224844/how-to-get-the-absolute-coordinates-of-a-view
+        // The amount of the image that gets cropped off the top and bottom due to scaling
+        final int croppedTops;
+        if ((scaledImageHeight - displayHeight) / 2 < 0)
+            croppedTops = 0;
+        else
+            croppedTops = (scaledImageHeight - displayHeight) / 2;
 
-        selectionBox = findViewById(R.id.selectionBox);
-        selectionBox.setImageBounds(displayMetrics.widthPixels, displayHeight);
+        // Initializes the selection box
+        final SelectionBox selectionBox = findViewById(R.id.selectionBox);
+        if (displayHeight < scaledImageHeight) // Chooses the smaller of image height or display height
+            selectionBox.setImageBounds(displayMetrics.widthPixels, displayHeight);
+        else
+            selectionBox.setImageBounds(displayMetrics.widthPixels, scaledImageHeight);
 
-        corners = new int[4][2];  // Initializes the variables to store the corners of the maze
 
         solveMazeButton.setOnClickListener(new View.OnClickListener() {
 
@@ -102,7 +98,7 @@ public class CornerSelectActivity extends Activity {
                 //selectionBox.hideView();
                 //solveMazeButton.setVisibility(View.GONE);
 
-                corners = CVUtils.orderPoints(selectionBox.getCornerCoords());
+                int[][] corners = CVUtils.orderPoints(selectionBox.getCornerCoords());
                 //Log.i(TAG, "onClick: Corners pre: \n" + printArr(corners));
                 for (int i = 0; i < 4; i++) {
                     corners[i][0] *= view_scale_ratio;
@@ -122,22 +118,6 @@ public class CornerSelectActivity extends Activity {
             }
         });
 
-    }
-
-    public Bitmap getResizedBitmap(Bitmap bm, float scale) {
-        int width = bm.getWidth();
-        int height = bm.getHeight();
-
-        // CREATE A MATRIX FOR THE MANIPULATION
-        Matrix matrix = new Matrix();
-        // RESIZE THE BIT MAP
-        matrix.postScale(scale,scale);
-
-        // "RECREATE" THE NEW BITMAP
-        Bitmap resizedBitmap = Bitmap.createBitmap(
-                bm, 0, 0, width, height, matrix, false);
-        bm.recycle();
-        return resizedBitmap;
     }
 
     public static Bitmap rotateBitmap(Bitmap source, float angle) {
