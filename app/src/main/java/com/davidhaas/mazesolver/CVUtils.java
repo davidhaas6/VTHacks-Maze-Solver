@@ -149,6 +149,19 @@ public class CVUtils {
         corners[3] = temp;
 
         MatOfPoint cornerMat = new MatOfPoint(corners);
+        Rect bRect = boundingRect(cornerMat);
+
+        // Ensures the bounding rect doesn't go outside the image
+        int rightX = bRect.x + bRect.width;
+        int bottomY = bRect.y + bRect.height;
+        if (rightX > image.width())
+            bRect = new Rect(bRect.x, bRect.y, bRect.width - (rightX - image.width()), bRect.height);
+        if (bottomY > image.height())
+            bRect = new Rect(bRect.x, bRect.y, bRect.width, bRect.height - (bottomY - image.height()));
+        if (bRect.x < 0)
+            bRect = new Rect(0, bRect.y, bRect.width, bRect.height - (bottomY - image.height()));
+        if (bRect.y < 0)
+            bRect = new Rect(bRect.x, 0, bRect.width, bRect.height - (bottomY - image.height()));
 
         //Mat mask = Mat.zeros(image.size(), image.type());
         Mat mask8 = Mat.zeros(image.size(), CV_8UC1);
@@ -161,9 +174,11 @@ public class CVUtils {
         // Log.i(TAG, "cropQuadrilateral: Masking Image");
         Mat result = new Mat(image.size(), image.type(), new Scalar(255,255,255));
         image.copyTo(result, mask8);
+
+        //Log.i(TAG, "cropQuadrilateral: rect:" + bRect);
         //Core.bitwise_and(image,mask,result,mask8);
-        Log.i(TAG, "cropQuadrilateral: " + cornerMat);
-        return result.submat(boundingRect(cornerMat));
+        //Log.i(TAG, "cropQuadrilateral:result size: " + result.size());
+        return result.submat(bRect);
     }
 
     public static int[][] getBinaryArray(Mat m) {
