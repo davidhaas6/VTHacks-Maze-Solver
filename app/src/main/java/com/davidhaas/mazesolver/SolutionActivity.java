@@ -1,5 +1,6 @@
 package com.davidhaas.mazesolver;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -39,10 +40,11 @@ import java.util.Stack;
  * Author: David Haas
  * Last updated: 6/28/18
  */
-public class SolutionActivity extends AppCompatActivity {
+public class SolutionActivity extends Activity {
     // TODO: Transfer drawing solution over here
     // TODO: Add loading button while program is solving maze
     // TODO: Look into this for cropping ur image: https://goo.gl/Qh8THg
+    // TODO: Remove OpenCV dependencies https://developer.android.com/reference/android/graphics/Matrix
     //findViewById(R.id.loadingPanel).setVisibility(View.GONE);
 
     private static final String TAG = "SolutionActivity";
@@ -59,6 +61,7 @@ public class SolutionActivity extends AppCompatActivity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         setContentView(R.layout.activity_solution);
+        imageView = findViewById(R.id.imageView);
 
         // Loads the intent
         Intent intent = getIntent();
@@ -66,7 +69,7 @@ public class SolutionActivity extends AppCompatActivity {
         corners = (int[][]) bundle.getSerializable(CornerSelectActivity.CORNERS);
 
         // Loads the intent image as a bitmap for processing
-        Uri imgUri = Uri.parse(getIntent().getStringExtra(MainActivity.IMAGE_URI));
+        Uri imgUri = Uri.parse(bundle.getString(MainActivity.IMAGE_URI));
         try {
             image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
         } catch (IOException e) {
@@ -74,11 +77,13 @@ public class SolutionActivity extends AppCompatActivity {
             Log.e(TAG, "onCreate: Error loading image", e);
         }
 
-        image = rotateBitmap(image, 90);
+        // Rotate the image if its wider than it is long
+        if (image.getWidth() > image.getHeight())
+            image = rotateBitmap(image, 90);
 
         getCroppedMatrix(corners);
 
-        solveMaze();
+        //solveMaze();
         findViewById(R.id.loadingPanel).setVisibility(View.GONE);
 
     }
@@ -118,51 +123,30 @@ public class SolutionActivity extends AppCompatActivity {
         Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
         Utils.bitmapToMat(bmp32, img_matrix);
 
-        Log.i(TAG, "Height: " + bmp32.getHeight());
-        Log.i(TAG, "getCroppedMatrix: matrix height " +img_matrix.height());
-        saveMat(img_matrix);
         Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
-
-        // Applies a 4 point transform to the image
 
         //Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
 
         img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
 
-        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(15, 15), 0);
+        Imgproc.GaussianBlur(img_matrix, img_matrix, new Size(7, 7), 0);
 
-        Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 25, 5);
+        Size dstSize = new Size(img_matrix.width() / 5, img_matrix.height() / 5);
+        Log.i(TAG, "getCroppedMatrix: new size: " + dstSize);
+        Mat dst = new Mat();
+        Imgproc.resize(img_matrix, dst, dstSize, 1,1, Imgproc.INTER_NEAREST);
+
+        //displayMat(dst);
+        //TODO: consider making blockSize and C based off of image size?
+        Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
+        displayMat(img_matrix);
 
         int[][] arr = CVUtils.getBinaryArray(img_matrix);
+        //Log.i(TAG, "getCroppedMatrix: arr: + \n" + printArr(arr));
 
-        Log.i(TAG, "getCroppedMatrix: w: " + arr[0].length + "\t h: " + arr.length);
-        saveMat(img_matrix);
         //displayMat(img_matrix);
 
         return arr;
-    }
-
-    public void saveMat(Mat imgMat) {
-        Bitmap bmp = Bitmap.createBitmap(imgMat.width(), imgMat.height(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(imgMat,bmp);
-        double scale = .1;
-        //Bitmap resized = Bitmap.createScaledBitmap(bmp,(int) (bmp.getWidth() * scale), (int) (bmp.getHeight()*scale), false);
-
-        try
-        {
-            String mBaseFolderPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/DCIM/Camera/";
-            String mFilePath = mBaseFolderPath + bmp.getGenerationId() + ".png";
-            Log.i(TAG, "saveMat: Wrote image! " + mFilePath);
-
-            FileOutputStream stream = new FileOutputStream(mFilePath);
-            bmp.compress(Bitmap.CompressFormat.PNG, 100, stream);
-            stream.flush();
-            stream.close();
-        }
-        catch(Exception e)
-        {
-            Log.e("Could not save", e.toString());
-        }
     }
 
     // Writes the solution to the deskewed matrix, and writes a bitmap image in which all the
@@ -200,21 +184,6 @@ public class SolutionActivity extends AppCompatActivity {
         // vector is your int[] of ARGB
         solution.copyPixelsFromBuffer(IntBuffer.wrap(pixels));
 
-//        // https://docs.opencv.org/java/2.4.9/org/opencv/android/Utils.html#bitmapToMat(Bitmap,%20org.opencv.core.Mat,%20boolean)
-//        Mat img_matrix = new Mat();
-//        Bitmap bmp32 = solution.copy(Bitmap.Config.ARGB_8888, true);
-//        Utils.bitmapToMat(bmp32, img_matrix, true);
-//
-////        // Scales the image back to normal
-////        Mat skew_matrix = new Mat(img_matrix.rows() * scale, img_matrix.cols() * scale, img_matrix.type());
-////        Imgproc.resize(img_matrix, skew_matrix, skew_matrix.size());
-//
-//        //  img_matrix = CVUtils.fourPointTransform(img_matrix, corners, true);
-//
-//        Bitmap skewed_solution = Bitmap.createBitmap(img_matrix.cols(), img_matrix.rows(), Bitmap.Config.ARGB_8888);
-//
-//        Utils.matToBitmap(img_matrix, skewed_solution, true);
-
         //TODO: skewed solution isn't drawing
         Rect boundingRect = CVUtils.getBoundingRect(corners);
 
@@ -230,31 +199,38 @@ public class SolutionActivity extends AppCompatActivity {
     }
 
     public void displayMat(Mat mat) {
-        Bitmap bmp = null;
+        Bitmap bmp;
 
-        Mat tmp = new Mat(image.getHeight(), image.getWidth(), CvType.CV_8U, new Scalar(4));
+        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
         try {
             Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
             bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(tmp, bmp);
+            imageView.setImageBitmap(bmp);
         } catch (CvException e) {
             Log.d("Exception", e.getMessage());
         }
-        imageView.setImageBitmap(bmp);
     }
 
     public String printArr(int[][] arr) {
         StringBuilder sb = new StringBuilder();
-
+        sb.append("[ ");
         for (int q = 0; q < arr.length; q++) {
-            for (int h = 0; h < arr[q].length; h++) {
+            if (q > 0)
+                sb.append("\t");
+            sb.append("[");
+            for (int h = 0; h < arr[q].length - 1; h++) {
                 sb.append(arr[q][h]);
                 sb.append(", ");
             }
-            sb.append("\n");
+            sb.append(arr[q][arr[q].length - 1]);
+            sb.append("],\n");
         }
+        sb.delete(sb.length() - 2, sb.length());
+        sb.append(" ]");
         return sb.toString();
     }
+
 
     private int[] get1DArray(int[][] arr, int numChannels) {
         int[] ret = new int[arr.length * arr[0].length * numChannels];
