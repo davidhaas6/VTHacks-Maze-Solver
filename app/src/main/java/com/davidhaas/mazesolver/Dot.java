@@ -51,7 +51,6 @@ public class Dot extends View {
         this.y = y;
         maxWidth = getResources().getDisplayMetrics().widthPixels;
         maxHeight = getResources().getDisplayMetrics().heightPixels;
-        Log.i(TAG, "Dot: w,h: " + maxWidth + " " + maxHeight);
         this.RADIUS = radius;
         feather = (int) (RADIUS * 2.2);
 
