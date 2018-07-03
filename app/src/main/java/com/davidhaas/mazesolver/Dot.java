@@ -2,6 +2,7 @@ package com.davidhaas.mazesolver;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -31,6 +32,8 @@ public class Dot extends View {
     private int initialY;
     private int offsetX;
     private int offsetY;
+    private int maxWidth;
+    private int maxHeight;
     private Paint myPaint;
 
 
@@ -46,6 +49,9 @@ public class Dot extends View {
 
         this.x = x;
         this.y = y;
+        maxWidth = getResources().getDisplayMetrics().widthPixels;
+        maxHeight = getResources().getDisplayMetrics().heightPixels;
+        Log.i(TAG, "Dot: w,h: " + maxWidth + " " + maxHeight);
         this.RADIUS = radius;
         feather = (int) (RADIUS * 2.2);
 
@@ -63,6 +69,7 @@ public class Dot extends View {
         myPaint.setAntiAlias(true);
     }
 
+    //TODO: Add more robust safeguards for preventing x,y < 0
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getAction();
         Point touch;
@@ -93,6 +100,15 @@ public class Dot extends View {
                     // Drags the dot
                     x = initialX + touch.x - offsetX;
                     y = initialY + touch.y - offsetY;
+                    if (x < 0)
+                        x = 0;
+                    else if (x > maxWidth)
+                        x = maxWidth;
+                    if (y < 0)
+                        y = 0;
+                    else if (y > maxHeight)
+                        y = maxHeight;
+
                     boundingBox.offsetTo(x - (RADIUS + feather), y - (RADIUS + feather));
                 }
                 break;
@@ -106,6 +122,11 @@ public class Dot extends View {
         canvas.drawCircle(x, y, RADIUS, myPaint);
         // canvas.drawRect(boundingBox, rPaint);
         // invalidate();
+    }
+
+    public void setBounds(int w, int h) {
+        maxWidth = w;
+        maxHeight = h;
     }
 
     public Point getLocation() {

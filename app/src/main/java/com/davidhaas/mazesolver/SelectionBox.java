@@ -86,6 +86,11 @@ public class SelectionBox extends View {
         return coords;
     }
 
+    public void setImageBounds(int width, int height){
+        for (int i = 0; i < corners.length; i++)
+            corners[i].setBounds(width, height);
+    }
+
     public void hideView() {
         setVisibility(View.GONE);
     }
