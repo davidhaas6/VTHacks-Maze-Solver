@@ -5,6 +5,7 @@ import android.util.Log;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
@@ -28,7 +29,7 @@ import static org.opencv.imgproc.Imgproc.boundingRect;
  * Name: CVUtils
  * Purpose: A collection of methods to process the maze image for solving
  * Author: David Haas
- * Last updated: 6/28/18
+ * Created: 2/16/18
  */
 
 public class CVUtils {
@@ -126,7 +127,7 @@ public class CVUtils {
     public static Rect getBoundingRect(int[][] bounds) {
         bounds = orderPoints(bounds);
         Point[] corners = new Point[4];
-        for(int i=0; i < 4; i++)
+        for (int i = 0; i < 4; i++)
             corners[i] = new Point(bounds[i][0], bounds[i][1]);
 
         MatOfPoint cornerMat = new MatOfPoint(corners);
@@ -137,9 +138,10 @@ public class CVUtils {
     public static Mat cropQuadrilateral(Mat image, int[][] bounds) {
         // https://stackoverflow.com/questions/48301186/cropping-concave-polygon-from-image-using-opencv-python
         // https://stackoverflow.com/questions/41689522/opencv-cropping-non-rectangular-region-from-image-using-c
+        image = image.clone();
         bounds = orderPoints(bounds);
         Point[] corners = new Point[4];
-        for(int i=0; i < 4; i++)
+        for (int i = 0; i < 4; i++)
             corners[i] = new Point(bounds[i][0], bounds[i][1]);
 
         // Swaps the bottom two corners so that the order is: tl, tr, br, bl. This is necessary to
@@ -163,21 +165,17 @@ public class CVUtils {
         if (bRect.y < 0)
             bRect = new Rect(bRect.x, 0, bRect.width, bRect.height - (bottomY - image.height()));
 
-        //Mat mask = Mat.zeros(image.size(), image.type());
+        // Creates an empty "canvas" in the shape of the size of the image
         Mat mask8 = Mat.zeros(image.size(), CV_8UC1);
 
-        // Log.i(TAG, "cropQuadrilateral: Calculating poly");
+        // Creates a mask in the shape of the polygon
+        Core.fillConvexPoly(mask8, cornerMat, new Scalar(255, 255, 255));
 
-        //Core.fillConvexPoly(mask, cornerMat, new Scalar(255,255,255));
-        Core.fillConvexPoly(mask8, cornerMat, new Scalar(255,255,255));
-
-        // Log.i(TAG, "cropQuadrilateral: Masking Image");
-        Mat result = new Mat(image.size(), image.type(), new Scalar(255,255,255));
+        // Copies the relevant part of the image into the polygon mask
+        Mat result = new Mat(image.size(), image.type(), new Scalar(255, 255, 255));
         image.copyTo(result, mask8);
 
-        //Log.i(TAG, "cropQuadrilateral: rect:" + bRect);
-        //Core.bitwise_and(image,mask,result,mask8);
-        //Log.i(TAG, "cropQuadrilateral:result size: " + result.size());
+        // Returns the masked image with the rest of the image being 0s
         return result.submat(bRect);
     }
 
@@ -200,6 +198,81 @@ public class CVUtils {
         }
         return out;
     }
+
+    // Returns two because mazes will be split in half pretty much
+    public static List<MatOfPoint> largest2PerimContours(Mat m) {
+        List<MatOfPoint> cnts = new ArrayList<>();
+        Imgproc.findContours(m.clone(), cnts, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+
+        if (cnts.size() == 0)
+            return null;
+
+        MatOfPoint largest = cnts.get(0);
+        MatOfPoint secondLargest = largest;
+        double largestPerim = 0;
+        double secondPerim = 0;
+        double cntPerim;
+
+        for (MatOfPoint c : cnts) {
+            MatOfPoint2f c2f = new MatOfPoint2f();
+            c.convertTo(c2f, CvType.CV_32FC2);
+            cntPerim = Imgproc.arcLength(c2f, true);
+
+            if (!isContourSquare(c2f)) {
+                if ((cntPerim > largestPerim)) {
+                    secondLargest = largest;
+                    secondPerim = largestPerim;
+
+                    largest = c;
+                    largestPerim = cntPerim;
+                } else if (cntPerim > secondPerim) {
+                    secondLargest = c;
+                    secondPerim = cntPerim;
+                }
+            }
+        }
+
+        List<MatOfPoint> mazeComponents = new ArrayList<>();
+        mazeComponents.add(largest);
+        mazeComponents.add(secondLargest);
+        return mazeComponents;
+    }
+
+    private static boolean isContourSquare(MatOfPoint2f thisContour) {
+
+        Rect ret = null;
+
+        MatOfPoint approxContour = new MatOfPoint();
+        MatOfPoint2f approxContour2f = new MatOfPoint2f();
+
+        double cntPerim = Imgproc.arcLength(thisContour, true);
+
+        Imgproc.approxPolyDP(thisContour, approxContour2f, cntPerim * .1, true);
+
+        approxContour2f.convertTo(approxContour, CvType.CV_32S);
+
+        if (approxContour.size().height == 4) {
+            ret = Imgproc.boundingRect(approxContour);
+        }
+
+        return (ret != null);
+    }
+
+    public static Rect combineRects(Rect r1, Rect r2) {
+        android.graphics.Rect aRect1 = OpenCV2AndroidRect(r1);
+        android.graphics.Rect aRect2 = OpenCV2AndroidRect(r2);
+        aRect1.union(aRect2);
+        return android2OpenCVRect(aRect1);
+    }
+
+    public static android.graphics.Rect OpenCV2AndroidRect(Rect r) {
+        return new android.graphics.Rect(r.x, r.y, r.x + r.width, r.y + r.height);
+    }
+
+    public static Rect android2OpenCVRect(android.graphics.Rect r) {
+        return new Rect(new Point(r.left, r.top), new Point(r.right, r.bottom));
+    }
+
 
     //TODO: Move to different class?
    /* public int[][] trimWhitespace(int[][] maze) {
