@@ -17,6 +17,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.davidhaas.mazesolver.pathfinding.Asolution;
@@ -52,15 +53,11 @@ import java.util.function.ObjIntConsumer;
  */
 public class SolutionActivity extends Activity {
     // TODO: Add loading button while program is solving maze
-    // TODO: Look into this for cropping ur image: https://goo.gl/Qh8THg
-    // TODO: Remove OpenCV dependencies https://developer.android.com/reference/android/graphics/Matrix
+    // TODO: Remove OpenCV dependencies https://developer.android.com/reference/android/graphics/Matrix, https://goo.gl/Qh8THg
     //findViewById(R.id.loadingPanel).setVisibility(View.GONE);
 
     private static final String TAG = "SolutionActivity";
-    Bitmap image;
     ImageView imageView;
-    private int[][] corners;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,43 +69,51 @@ public class SolutionActivity extends Activity {
         setContentView(R.layout.activity_solution);
         imageView = findViewById(R.id.imageView);
 
+        View loadingBar = findViewById(R.id.loadingPanel);
+        loadingBar.setVisibility(View.VISIBLE);
+
         // Loads the intent
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
-        corners = (int[][]) bundle.getSerializable(CornerSelectActivity.CORNERS);
+        int[][] corners = (int[][]) bundle.getSerializable(CornerSelectActivity.CORNERS);
 
         // Loads the intent image as a bitmap for processing
         Uri imgUri = Uri.parse(bundle.getString(MainActivity.IMAGE_URI));
         try {
-            image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
-        } catch (IOException e) {
+            Bitmap image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
+
+            // Rotate the image if its wider than it is long
+            if (image.getWidth() > image.getHeight())
+                image = rotateBitmap(image, 90);
+
+            //getCroppedMatrix(corners);
+
+            solveMaze(corners, image);
+            loadingBar.setVisibility(View.GONE);
+        } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "onCreate: Error loading image", e);
         }
 
-        // Rotate the image if its wider than it is long
-        if (image.getWidth() > image.getHeight())
-            image = rotateBitmap(image, 90);
-
-        //getCroppedMatrix(corners);
-
-        solveMaze();
-        findViewById(R.id.loadingPanel).setVisibility(View.GONE);
+        // run a background job and once complete
+        //pb.setVisibility(ProgressBar.INVISIBLE);
 
     }
 
     // Runs the maze solving methods
-    public boolean solveMaze() {
+    private boolean solveMaze(int[][] corners, Bitmap image) {
 
         // Returns a deskewed and cropped maze
         // int[][] deskewedMatrix = getDeskewedMatrix(corners);
-        int[][] deskewedMatrix = getCroppedMatrix(corners);
+        Mat croppedMaze = getCroppedMaze(corners, image);
+        image = mat2BMP(croppedMaze);
+        int[][] croppedBinaryMaze = CVUtils.getBinaryArray(croppedMaze);
 
         // Runs A* on the maze and gets the solution stack
         //TODO: Multithread A*?
 
         //TODO: Entrance-finding doesn't work if they're on the top and bottom
-        Asolution mySol = new Asolution(deskewedMatrix);
+        Asolution mySol = new Asolution(croppedBinaryMaze);
         Stack<int[]> solution = mySol.getPath();
 
         if (solution == null) {
@@ -119,14 +124,14 @@ public class SolutionActivity extends Activity {
         }
         Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
 
-        drawSolution(solution, deskewedMatrix);
+        drawSolution(solution, croppedBinaryMaze, image);
         return true;
     }
 
 
     // Crops the image in a rectangle bounding the corners and applies a threshold to obtain binary
     // values. 1s represent walls and 0s are paths.
-    public int[][] getCroppedMatrix(int[][] corners) {
+    private Mat getCroppedMaze(int[][] corners, Bitmap image) {
         // Converts the bitmap to an OpenCV matrix
         Mat img_matrix = new Mat();
         Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
@@ -175,26 +180,23 @@ public class SolutionActivity extends Activity {
         //TODO: consider making blockSize and C based off of image size?
         Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
 
-        displayMat(img_matrix);
-        image = mat2BMP(img_matrix);
+        //displayMat(img_matrix);
 
-        int[][] arr = CVUtils.getBinaryArray(img_matrix);
-
-        return arr;
+        return img_matrix;
     }
 
     // Writes the solution to the deskewed matrix, and writes a bitmap image in which all the
     // non-solution coordinates have a alpha value 0, denoting their transparency. The bitmap image
     // then undergoes a reverse of the perspective transform applied to the maze and is overlayed
     // over the src image.
-    public void drawSolution(Stack<int[]> path, int[][] mazetrix) {
+    private void drawSolution(Stack<int[]> path, int[][] mazetrix, Bitmap image) {
 
         // Sets the value of the solution pixels to 2
         for (int[] coords : path) {
             mazetrix[coords[0]][coords[1]] = 2;
         }
 
-        // Colors the solution  re
+        // Colors the solution
         int color, a;
         final int r = 255;
         for (int i = 0; i < mazetrix.length; i++) {
@@ -217,10 +219,10 @@ public class SolutionActivity extends Activity {
 
         putOverlay(image, solution, 0,0);
         imageView.setImageBitmap(image);
-
     }
 
     private void putOverlay(Bitmap base, Bitmap overlay, int x, int y) {
+        //base = base.copy(Bitmap.Config.ARGB_8888, true);
         Canvas canvas = new Canvas(base);
         canvas.drawBitmap(overlay, x, y, null);
     }
@@ -250,7 +252,7 @@ public class SolutionActivity extends Activity {
         return bmp;
     }
 
-    public void displayMatCnts(Mat mat, List<MatOfPoint> contours) {
+    private void displayMatCnts(Mat mat, List<MatOfPoint> contours) {
         Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
 
         if (mat.channels() == 1)
@@ -260,7 +262,7 @@ public class SolutionActivity extends Activity {
         displayMat(tmp);
     }
 
-    public void displayMatRects(Mat mat, List<Rect> rects) {
+    private void displayMatRects(Mat mat, List<Rect> rects) {
         Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
 
         if (mat.channels() == 1)
@@ -275,7 +277,7 @@ public class SolutionActivity extends Activity {
         displayMat(tmp);
     }
 
-    public String printArr(int[][] arr) {
+    private String printArr(int[][] arr) {
         StringBuilder sb = new StringBuilder();
         sb.append("[ ");
         for (int q = 0; q < arr.length; q++) {
@@ -308,18 +310,9 @@ public class SolutionActivity extends Activity {
         return ret;
     }
 
-    public static Bitmap rotateBitmap(Bitmap source, float angle) {
+    private static Bitmap rotateBitmap(Bitmap source, float angle) {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
-    public int getStatusBarHeight() {
-        int result = 0;
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            result = getResources().getDimensionPixelSize(resourceId);
-        }
-        return result;
     }
 }
