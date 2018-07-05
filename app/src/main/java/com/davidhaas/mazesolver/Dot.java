@@ -19,7 +19,7 @@ import android.view.View;
  * Name: Dot
  * Purpose: Selection dots for the bounds of the maze
  * Author: David Haas
- * Last updated: 6/28/18
+ * Created: 2/20/18
  */
 
 public class Dot extends View {

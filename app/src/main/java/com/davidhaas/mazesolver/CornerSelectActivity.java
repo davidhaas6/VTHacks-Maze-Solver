@@ -25,7 +25,7 @@ import java.io.IOException;
  * Name: CornerSelectActivity
  * Purpose: Provides an interface for the user to select the bounds of the maze
  * Author: David Haas
- * Last updated: 6/28/18
+ * Created: 2/16/18
  */
 
 public class CornerSelectActivity extends Activity {
@@ -105,7 +105,7 @@ public class CornerSelectActivity extends Activity {
                     corners[i][1] *= view_scale_ratio;
                     corners[i][1] += croppedTops*view_scale_ratio; //TODO: Find out why this works
                 }
-                //Log.i(TAG, "onClick: Corners post: \n" + printArr(corners));
+                Log.i(TAG, "onClick: Corners post: \n" + printArr(corners));
 
                 // Sends an intent to the SolutionActivity class with the corners and img path
                 Intent mIntent = new Intent(CornerSelectActivity.this, SolutionActivity.class);
