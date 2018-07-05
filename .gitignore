@@ -141,3 +141,4 @@ fabric.properties
 .externalNativeBuild
 
 old_methods.txt
+logcat_out.txt
