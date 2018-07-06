@@ -29,7 +29,6 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
@@ -45,6 +44,8 @@ import java.util.List;
 import java.util.Stack;
 import java.util.function.ObjIntConsumer;
 
+import android.graphics.Point;
+
 /**
  * Name: SolutionActivity
  * Purpose: Displays the solution of the maze.
@@ -57,7 +58,10 @@ public class SolutionActivity extends Activity {
     //findViewById(R.id.loadingPanel).setVisibility(View.GONE);
 
     private static final String TAG = "SolutionActivity";
-    ImageView imageView;
+    private final int SCALE_FACTOR = 2; // The amount the maze scales down before using A*
+    private ImageView imageView;
+    private Point mazeCorner; // TODO: Can you get rid of this global variable?
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,7 +110,7 @@ public class SolutionActivity extends Activity {
         // Returns a deskewed and cropped maze
         // int[][] deskewedMatrix = getDeskewedMatrix(corners);
         Mat croppedMaze = getCroppedMaze(corners, image);
-        image = mat2BMP(croppedMaze);
+        //image = mat2BMP(croppedMaze);
         int[][] croppedBinaryMaze = CVUtils.getBinaryArray(croppedMaze);
 
         // Runs A* on the maze and gets the solution stack
@@ -157,6 +161,7 @@ public class SolutionActivity extends Activity {
             Rect combined = CVUtils.combineRects(rects.get(0), rects.get(1));
             rects.clear();
             rects.add(combined);
+            Log.i(TAG, "getCroppedMaze: combined: " + combined);
 
             //displayMatRects(img_matrix, rects);
             int[][] bounds = new int[][]{
@@ -168,14 +173,27 @@ public class SolutionActivity extends Activity {
 
             img_matrix = CVUtils.cropQuadrilateral(img_matrix, bounds);
             //displayMat(img_matrix);
+
+            // Find the lowest x and y coord because that will define the rect that the first pass
+            // cropped maze was in
+            int lowestX = corners[0][0], lowestY = corners[0][1];
+            for(int[] p: corners) {
+                if (p[0] < lowestX)
+                    lowestX = p[0];
+                if (p[1] < lowestY)
+                    lowestY = p[1];
+            }
+
+            mazeCorner = new Point(combined.x + lowestX, combined.y + lowestY);
         }
 
-
-        Size dstSize = new Size(img_matrix.width() / 2, img_matrix.height() / 2);
-        Log.i(TAG, "getCroppedMatrix: new size: " + dstSize);
+        // Resize the image
+        Size dstSize = new Size(img_matrix.width() / SCALE_FACTOR, img_matrix.height() / SCALE_FACTOR);
         Mat dst = new Mat();
         Imgproc.resize(img_matrix, dst, dstSize, 1, 1, Imgproc.INTER_AREA);
         img_matrix = dst;
+        Log.i(TAG, "getCroppedMaze: Scaled image size: " + dstSize);
+
 
         //TODO: consider making blockSize and C based off of image size?
         Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
@@ -216,15 +234,28 @@ public class SolutionActivity extends Activity {
         int[] pixels = get1DArray(mazetrix, 1);
 
         Bitmap solution = Bitmap.createBitmap(pixels, mazetrix[0].length, mazetrix.length, Bitmap.Config.ARGB_8888);
+        // TODO: Resize solution bitmap by SCALE_FACTOR and use mazeCorner to place it on image.
+        solution = Bitmap.createScaledBitmap(
+                solution,
+                solution.getWidth() * SCALE_FACTOR,
+                solution.getHeight() * SCALE_FACTOR,
+                true
+        );
 
-        putOverlay(image, solution, 0,0);
-        imageView.setImageBitmap(image);
+        Log.i(TAG, "drawSolution: mazecorner: " + mazeCorner);
+
+        Bitmap out = putOverlay(image, solution, mazeCorner.x, mazeCorner.y);
+        imageView.setImageBitmap(out);
     }
 
-    private void putOverlay(Bitmap base, Bitmap overlay, int x, int y) {
-        //base = base.copy(Bitmap.Config.ARGB_8888, true);
+    private Bitmap putOverlay(Bitmap base, Bitmap overlay, int x, int y) {
+        base = base.copy(Bitmap.Config.ARGB_8888, true);
         Canvas canvas = new Canvas(base);
+        Paint p = new Paint();
+        p.setColor(Color.RED);
+        canvas.drawCircle(x, y, 5, p);
         canvas.drawBitmap(overlay, x, y, null);
+        return base;
     }
 
 
@@ -269,8 +300,8 @@ public class SolutionActivity extends Activity {
             Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
 
         for (Rect r : rects) {
-            Point p1 = new Point(r.x, r.y);
-            Point p2 = new Point(r.x + r.width, r.y + r.height);
+            org.opencv.core.Point p1 = new org.opencv.core.Point(r.x, r.y);
+            org.opencv.core.Point p2 = new org.opencv.core.Point(r.x + r.width, r.y + r.height);
             Core.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
         }
 

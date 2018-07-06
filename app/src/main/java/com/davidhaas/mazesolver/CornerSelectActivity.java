@@ -71,7 +71,7 @@ public class CornerSelectActivity extends Activity {
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
 
         // The height of the available space to show the image
-        final int displayHeight = getResources().getDisplayMetrics().heightPixels - getStatusBarHeight();
+        final int displayHeight = displayMetrics.heightPixels - getStatusBarHeight();
         final double view_scale_ratio = (double) image.getWidth() / displayMetrics.widthPixels;
         final int scaledImageHeight = (int) (image.getHeight() / view_scale_ratio);
 

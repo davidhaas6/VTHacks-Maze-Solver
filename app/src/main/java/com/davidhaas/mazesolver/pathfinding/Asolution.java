@@ -53,7 +53,7 @@ public class Asolution {
 
     private int[] startFinish(int[][] array) {
         int[] output = new int[]{-1, -1, -1, -1};
-        int squareSize = 18;
+        int squareSize = 2;
         //top
         for (int i = squareSize; i < array[0].length - squareSize; i++) {
             boolean comp = true;
