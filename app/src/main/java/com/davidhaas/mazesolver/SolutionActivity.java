@@ -126,7 +126,7 @@ public class SolutionActivity extends Activity {
 
             return false;
         }
-        Log.i(TAG, "solveMaze: MAZE SOLVED!!!!!!");
+        Log.i(TAG, "solveMaze: MAZE SOLVED");
 
         drawSolution(solution, croppedBinaryMaze, image);
         return true;
@@ -157,11 +157,9 @@ public class SolutionActivity extends Activity {
                 rects.add(Imgproc.boundingRect(c));
             //displayMatCnts(img_matrix, mazePerim);
 
-
             Rect combined = CVUtils.combineRects(rects.get(0), rects.get(1));
             rects.clear();
             rects.add(combined);
-            Log.i(TAG, "getCroppedMaze: combined: " + combined);
 
             //displayMatRects(img_matrix, rects);
             int[][] bounds = new int[][]{
@@ -177,7 +175,7 @@ public class SolutionActivity extends Activity {
             // Find the lowest x and y coord because that will define the rect that the first pass
             // cropped maze was in
             int lowestX = corners[0][0], lowestY = corners[0][1];
-            for(int[] p: corners) {
+            for (int[] p : corners) {
                 if (p[0] < lowestX)
                     lowestX = p[0];
                 if (p[1] < lowestY)
@@ -214,24 +212,38 @@ public class SolutionActivity extends Activity {
             mazetrix[coords[0]][coords[1]] = 2;
         }
 
+        int[][] pixOut = new int[mazetrix.length][mazetrix[0].length];
+
+        // The radius that the path "puffs" out in
+        final int bloomAmount = (int) ((mazetrix.length * mazetrix[0].length) * Math.pow(SCALE_FACTOR, 2) / 50000);
+        Log.i(TAG, "drawSolution: bloom: " + bloomAmount);
         // Colors the solution
-        int color, a;
-        final int r = 255;
+        final int opaque = (int) ((long) 0xff << 24) | 0xff << 16; // Encodes it in hexadecimal sRGB color space
+        final int translucent = (0xff) << 16;
         for (int i = 0; i < mazetrix.length; i++) {
             for (int j = 0; j < mazetrix[0].length; j++) {
 
                 // If pixel is part of the solution, make the color opaque red, otherwise transparent
                 if (mazetrix[i][j] == 2) {
-                    a = 255;
+                    pixOut[i][j] = opaque;
+
+                    int y;
+                    for (int x = -bloomAmount; x <= bloomAmount; x++) {
+                        y = (int) Math.round(Math.sqrt(bloomAmount * bloomAmount - x * x));
+                        for (int k = -y; k <= y; k++) {
+                            if (0 <= i + k && i + k < mazetrix.length && 0 <= j + x && j + x < mazetrix[0].length)
+                                if (mazetrix[i + k][j + x] == 0)
+                                    pixOut[i + k][j + x] = opaque;
+                                else if (mazetrix[i+k][j+x] == 1)
+                                    break;
+                        }
+                    }
                 } else {
-                    a = 0;
+                    pixOut[i][j] = translucent;
                 }
-                // Encodes it in hexadecimal sRGB color space
-                color = (a & 0xff) << 24 | (r & 0xff) << 16;
-                mazetrix[i][j] = color;
             }
         }
-        int[] pixels = get1DArray(mazetrix, 1);
+        int[] pixels = get1DArray(pixOut, 1);
 
         Bitmap solution = Bitmap.createBitmap(pixels, mazetrix[0].length, mazetrix.length, Bitmap.Config.ARGB_8888);
         // TODO: Resize solution bitmap by SCALE_FACTOR and use mazeCorner to place it on image.
@@ -241,8 +253,6 @@ public class SolutionActivity extends Activity {
                 solution.getHeight() * SCALE_FACTOR,
                 true
         );
-
-        Log.i(TAG, "drawSolution: mazecorner: " + mazeCorner);
 
         Bitmap out = putOverlay(image, solution, mazeCorner.x, mazeCorner.y);
         imageView.setImageBitmap(out);
