@@ -10,10 +10,13 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.shapes.OvalShape;
 import android.os.Bundle;
+import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+
+import static android.view.MotionEvent.INVALID_POINTER_ID;
 
 /**
  * Name: Dot
@@ -24,17 +27,13 @@ import android.view.View;
 
 public class Dot extends View {
     private int RADIUS;
-    private int x;
-    private int y;
+    private int mPosX;
+    private int mPosY;
     private Rect boundingBox;  // The area that the user can interact with the dot
     private int feather;  // Allows for a bigger bounding box than the actual shape
-    private int initialX;
-    private int initialY;
-    private int offsetX;
-    private int offsetY;
-    private int maxWidth;
-    private int maxHeight;
+    private Rect boundingScreenRect; // The rect that defines where the dot can move
     private Paint myPaint;
+    private Point mLastTouch = new Point();
 
 
     private static String TAG = "Dot";
@@ -47,10 +46,12 @@ public class Dot extends View {
     public Dot(Context context, AttributeSet attrs, int x, int y, int radius) {
         super(context, attrs);
 
-        this.x = x;
-        this.y = y;
-        maxWidth = getResources().getDisplayMetrics().widthPixels;
-        maxHeight = getResources().getDisplayMetrics().heightPixels;
+        int maxWidth = getResources().getDisplayMetrics().widthPixels;
+        int maxHeight = getResources().getDisplayMetrics().heightPixels;
+        boundingScreenRect = new Rect(0, 0, maxWidth, maxHeight);
+
+        mPosX = x;
+        mPosY = y;
         this.RADIUS = radius;
         feather = (int) (RADIUS * 2.2);
 
@@ -64,71 +65,55 @@ public class Dot extends View {
         // Log.i(TAG, "Dot: x: " + boundingBox.left + " y: " + boundingBox.top + " width: " + boundingBox.width() + " height: " + boundingBox.height());
 
         myPaint = new Paint();
-        myPaint.setColor(Color.argb(255, 153,153,255));
+        myPaint.setColor(Color.argb(255, 153, 153, 255));
         myPaint.setAntiAlias(true);
     }
 
-    //TODO: Add more robust safeguards for preventing x,y < 0
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
-        Point touch;
-        //Log.i(TAG, "onTouchEvent: Touched!");
-        switch (action) {
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                touch = new Point((int) event.getX(), (int) event.getY());
-                // Log.i(TAG, "onTouchEvent: " + touch);
-
-                // If the touch is within the dot, record the initial starting points
-                if (boundingBox.contains(touch.x, touch.y)) {
-                    initialX = x;
-                    initialY = y;
-                    offsetX = touch.x;
-                    offsetY = touch.y;
-                }
-
+                // Remember where we last started for dragging
+                mLastTouch.set((int) event.getX(), (int) event.getY());
                 break;
-
             case MotionEvent.ACTION_MOVE:
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL: //TODO: Probably not the right event to use?
-                touch = new Point((int) event.getX(), (int) event.getY());
-                if (boundingBox.contains(touch.x, touch.y)) {
-                    //Log.i(TAG, "onTouchEvent: " + touch);
-                    //Log.i(TAG, "onTouchEvent: " + boundingBox);
+                final Point touch = new Point((int) event.getX(), (int) event.getY());
 
-                    // Drags the dot
-                    x = initialX + touch.x - offsetX;
-                    y = initialY + touch.y - offsetY;
-                    if (x < 0)
-                        x = 0;
-                    else if (x > maxWidth)
-                        x = maxWidth;
-                    if (y < 0)
-                        y = 0;
-                    else if (y > maxHeight)
-                        y = maxHeight;
+                // Calculate the change in x and y from the dragging
+                int newX = mPosX + touch.x - mLastTouch.x;
+                int newY = mPosY + touch.y - mLastTouch.y;
 
-                    boundingBox.offsetTo(x - (RADIUS + feather), y - (RADIUS + feather));
+                // If it's within the bounds, translate the dot to those coordinates
+                if (boundingScreenRect.contains(newX, newY)) {
+                    mPosX = newX;
+                    mPosY = newY;
+
+                    boundingBox.offsetTo(mPosX - (RADIUS + feather), mPosY - (RADIUS + feather));
+
+                    // Set this as the new "last" touch
+                    mLastTouch = touch;
                 }
                 break;
         }
-        return (true);
+        return true;
     }
 
     public void draw(Canvas canvas) {
         super.draw(canvas);
 
-        canvas.drawCircle(x, y, RADIUS, myPaint);
-        // canvas.drawRect(boundingBox, rPaint);
+        canvas.drawCircle(mPosX, mPosY, RADIUS, myPaint);
+        // canvas.drawRect(boundingBox, myPaint);
         // invalidate();
     }
 
     public void setBounds(int w, int h) {
-        maxWidth = w;
-        maxHeight = h;
+        boundingScreenRect = new Rect(0, 0, w, h);
     }
 
     public Point getLocation() {
-        return new Point(x,y);
+        return new Point(mPosX, mPosY);
+    }
+
+    public boolean contains(int x, int y) {
+        return boundingBox.contains(x, y);
     }
 }

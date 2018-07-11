@@ -42,7 +42,10 @@ public class SelectionBox extends View {
         //int action = event.getAction();
         // Log.i(TAG, "onTouchEvent: Touched!");
         for (int i = 0; i < 4; i++) {
-            corners[i].onTouchEvent(event);
+            if(corners[i].contains((int) event.getX(), (int) event.getY())) {
+                corners[i].onTouchEvent(event);
+                break;
+            }
         }
         return true;
     }

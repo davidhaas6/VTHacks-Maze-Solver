@@ -142,3 +142,4 @@ fabric.properties
 
 old_methods.txt
 logcat_out.txt
+build_file_checksums.ser
