@@ -322,7 +322,6 @@ public class SolutionActivity extends Activity {
         int[] pixels = get1DArray(pixOut, 1);
 
         Bitmap solution = Bitmap.createBitmap(pixels, mazetrix[0].length, mazetrix.length, Bitmap.Config.ARGB_8888);
-        // TODO: Resize solution bitmap by SCALE_FACTOR and use mazeCorner to place it on image.
         solution = Bitmap.createScaledBitmap(
                 solution,
                 solution.getWidth() * SCALE_FACTOR,

@@ -186,11 +186,10 @@ public class CVUtils {
         m.get(0, 0, byteBuffer);
 
         //write to separate R,G,B arrays
-        // TODO: Take a second look at this..
         int[][] out = new int[m.rows()][m.cols()];
         for (int i = 0, c = 0; i < m.rows(); i++) {
             for (int j = 0; j < m.cols(); j++, c++) {
-                if (byteBuffer[c] == 0) // TODO: Is this just same data over and over again?
+                if (byteBuffer[c] == 0)
                     out[i][j] = 1;
                 else
                     out[i][j] = 0;
@@ -272,46 +271,4 @@ public class CVUtils {
     public static Rect android2OpenCVRect(android.graphics.Rect r) {
         return new Rect(new Point(r.left, r.top), new Point(r.right, r.bottom));
     }
-
-
-    //TODO: Move to different class?
-   /* public int[][] trimWhitespace(int[][] maze) {
-        List<int[]> rowRemoved = Arrays.asList(maze);
-
-        boolean allWhite;
-
-        // Removes all-white rows
-        for(int i = 0; i < maze.length; i++){
-            allWhite = true;
-
-            for (int j = 0; j < maze[0].length; j++) {
-                if (maze[i][j] ==  1)
-                    allWhite = false;
-                    break;
-            }
-
-            if (allWhite)
-                rowRemoved.remove(i);
-        }
-
-        ArrayList<List<Integer>> colRemoved = new ArrayList<>();
-
-        for (int i = 0; i < rowRemoved.size(); i++) {
-            List<int[]> row =  Arrays.asList(rowRemoved.get(i));
-            colRemoved.set(i,);
-        }
-
-        for(int i = 0; i < maze.length; i++){
-            allWhite = true;
-
-            for (int j = 0; j < maze[0].length; j++) {
-                if (maze[i][j] ==  1)
-                    allWhite = false;
-                break;
-            }
-
-            if (allWhite)
-                newMaze.remove(i);
-        }
-    }*/
 }

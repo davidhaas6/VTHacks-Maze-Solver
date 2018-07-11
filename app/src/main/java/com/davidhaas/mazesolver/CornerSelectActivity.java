@@ -104,7 +104,7 @@ public class CornerSelectActivity extends Activity {
                 for (int i = 0; i < 4; i++) {
                     corners[i][0] *= view_scale_ratio;
                     corners[i][1] *= view_scale_ratio;
-                    corners[i][1] += croppedTops*view_scale_ratio; //TODO: Find out why this works
+                    corners[i][1] += croppedTops*view_scale_ratio;
                 }
                 Log.i(TAG, "onClick: Corners post: \n" + printArr(corners));
 
