@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -43,6 +44,8 @@ public class CornerSelectActivity extends Activity {
 
         setContentView(R.layout.activity_corner_select);
         Button solveMazeButton = findViewById(R.id.solveMaze);
+        Typeface font = Typeface.createFromAsset(getAssets(), "fonts/press_start_2p.ttf");
+        solveMazeButton.setTypeface(font);
 
         // Loads the intent image as a bitmap for processing
         final Uri imgUri = Uri.parse(getIntent().getStringExtra(MainActivity.IMAGE_URI));
