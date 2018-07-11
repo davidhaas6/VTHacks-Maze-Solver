@@ -1,15 +1,28 @@
 package com.davidhaas.mazesolver;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Point;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import org.opencv.android.OpenCVLoader;
 
@@ -19,13 +32,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * Name: CornerSelectActivity
+ * Name: MainActivity
  * Purpose: Provides an interface for the user to take a picture of a maze.
  * Author: David Haas
  * Created: 2/16/18
  */
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     static {
         OpenCVLoader.initDebug();
@@ -41,11 +54,37 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        //Remove title bar
+        this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //Remove notification bar
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+
         setContentView(R.layout.activity_main);
 
-        // Creates the button with its listener
+        //Bitmap backgBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.maze_background));
+        //Bitmap logoBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.logo));
+
+//        //fill the background ImageView with the resized image
+//        ImageView background = findViewById(R.id.imgBackground);
+//        background.setScaleType(ImageView.ScaleType.CENTER);
+//        background.setImageBitmap(backgBMP);
+
+        //ImageView logo = findViewById(R.id.logo);
+        //logo.setImageBitmap(logoBMP);
+
+
+        // Creates the buttons with their listeners
         Button takePhotoButton = findViewById(R.id.takePhotoButton);
         Button loadPhotoButton = findViewById(R.id.loadPhotoButton);
+        Typeface font = Typeface.createFromAsset(getAssets(), "fonts/press_start_2p.ttf");
+        loadPhotoButton.setTypeface(font);
+        takePhotoButton.setTypeface(font);
+
+        TextView txt = findViewById(R.id.textView);
+        txt.setTypeface(font);
+
 
         takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
