@@ -133,18 +133,14 @@ public class AStarToUse {
         Stack<Cell> path = new Stack<Cell>();
         if(closed[endI][endJ]){
             //Trace back the path 
-             System.out.println("Path: ");
              Cell current = grid[endI][endJ];
-             System.out.print(current);
              while(current.getParent()!=null){
-                 System.out.print(" -> "+current.getParent());
                  path.push(current.getParent());
                  current = current.getParent();
              } 
              System.out.println();
              return path;
         }else {
-            System.out.println("No Path Found");
             return null;
         }
     }
@@ -159,12 +155,10 @@ public class AStarToUse {
         startJ = j;
     }
 
-
     public void setEndCell(int i, int j) {
         endI = i;
         endJ = j;
     }
-
 
     private void checkAndUpdateCost(Cell current, Cell t, int cost) {
         if (t == null || closed[t.i][t.j]) {

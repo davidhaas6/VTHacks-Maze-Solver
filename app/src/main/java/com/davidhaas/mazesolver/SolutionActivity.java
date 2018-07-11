@@ -214,9 +214,11 @@ public class SolutionActivity extends Activity {
 
         int[][] pixOut = new int[mazetrix.length][mazetrix[0].length];
 
+        // TODO: MAke bloom amount related to the perimeter instead? Like lower perimeter, higher bloom. Or maybe compare peri to area.
         // The radius that the path "puffs" out in
         final int bloomAmount = (int) ((mazetrix.length * mazetrix[0].length) * Math.pow(SCALE_FACTOR, 2) / 50000);
         Log.i(TAG, "drawSolution: bloom: " + bloomAmount);
+
         // Colors the solution
         final int opaque = (int) ((long) 0xff << 24) | 0xff << 16; // Encodes it in hexadecimal sRGB color space
         final int translucent = (0xff) << 16;
