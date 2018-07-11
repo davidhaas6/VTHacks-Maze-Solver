@@ -3,25 +3,27 @@ package com.davidhaas.mazesolver;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.net.Uri;
-import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.provider.MediaStore;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import com.davidhaas.mazesolver.pathfinding.Asolution;
+import com.wang.avi.AVLoadingIndicatorView;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
@@ -29,21 +31,14 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Rect;
-import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
-import java.util.function.ObjIntConsumer;
 
 import android.graphics.Point;
 
@@ -60,8 +55,15 @@ public class SolutionActivity extends Activity {
 
     private static final String TAG = "SolutionActivity";
     private final int SCALE_FACTOR = 2; // The amount the maze scales down before using A*
-    private ImageView imageView;
+    private final int MAZE_SOLVED = 1, MAZE_NOT_SOLVED = 0;
+    private final long MIN_LOAD_TIME = 1500;
     private Point mazeCorner; // TODO: Can you get rid of this global variable?
+    private ImageView imageView;
+    private TextView loadingText;
+    private TextView failText;
+    private AVLoadingIndicatorView loadingIcon;
+    private Button backButton;
+    private Handler mHandler;
 
 
     @Override
@@ -74,15 +76,26 @@ public class SolutionActivity extends Activity {
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_solution);
-        imageView = findViewById(R.id.imageView);
 
-        View loadingBar = findViewById(R.id.loadingPanel);
-        loadingBar.setVisibility(View.VISIBLE);
+        imageView = findViewById(R.id.imageView);
+        loadingText = findViewById(R.id.loadingText);
+        loadingIcon = findViewById(R.id.loadingIcon);
+        failText = findViewById(R.id.failText);
+        backButton = findViewById(R.id.backButton);
+
+        Typeface font = Typeface.createFromAsset(getAssets(), "fonts/press_start_2p.ttf");
+        loadingText.setTypeface(font);
+        failText.setTypeface(font);
+        backButton.setTypeface(font);
+
+        failText.setVisibility(View.INVISIBLE);
+        backButton.setVisibility(View.INVISIBLE);
+        startLoading();
 
         // Loads the intent
-        Intent intent = getIntent();
+        final Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
-        int[][] corners = (int[][]) bundle.getSerializable(CornerSelectActivity.CORNERS);
+        final int[][] corners = (int[][]) bundle.getSerializable(CornerSelectActivity.CORNERS);
 
         // Loads the intent image as a bitmap for processing
         Uri imgUri = Uri.parse(bundle.getString(MainActivity.IMAGE_URI));
@@ -93,48 +106,106 @@ public class SolutionActivity extends Activity {
             if (image.getWidth() > image.getHeight())
                 image = rotateBitmap(image, 90);
 
-            displayMat(getCroppedMaze(corners, image));
+            mHandler = new MyHandler(Looper.getMainLooper(), image);
 
-            //solveMaze(corners, image);
-            loadingBar.setVisibility(View.GONE);
+            Runnable solnRunnable = new SolutionRunnable(image, corners);
+            new Thread(solnRunnable).start();
+
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "onCreate: Error loading image", e);
         }
 
-        // run a background job and once complete
-        //pb.setVisibility(ProgressBar.INVISIBLE);
+        backButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finish();
+            }
+        });
 
     }
 
-    // Runs the maze solving methods
-    private boolean solveMaze(int[][] corners, Bitmap image) {
-
-        // Returns a deskewed and cropped maze
-        // int[][] deskewedMatrix = getDeskewedMatrix(corners);
-        Mat croppedMaze = getCroppedMaze(corners, image);
-        //image = mat2BMP(croppedMaze);
-        int[][] croppedBinaryMaze = CVUtils.getBinaryArray(croppedMaze);
-
-        // Runs A* on the maze and gets the solution stack
-        //TODO: Multithread A*?
-
-        //TODO: Entrance-finding doesn't work if they're on the top and bottom
-        Asolution mySol = new Asolution(croppedBinaryMaze);
-        Stack<int[]> solution = mySol.getPath();
-
-        if (solution == null) {
-            Toast.makeText(getApplicationContext(), "Could not solve maze with current selection!", Toast.LENGTH_LONG).show();
-            Log.e(TAG, "solveMaze: " + "Could not solve maze");
-
-            return false;
+    private class MyHandler extends Handler {
+        Bitmap image;
+        private MyHandler(Looper myLooper, Bitmap mazeImg) {
+            super(myLooper);
+            this.image = mazeImg;
         }
-        Log.i(TAG, "solveMaze: MAZE SOLVED");
+        public void handleMessage(Message msg) {
 
-        drawSolution(solution, croppedBinaryMaze, image);
-        return true;
+            int state = msg.what;
+
+            switch (state) {
+                case MAZE_SOLVED:
+                    Bundle b = (Bundle) msg.obj;
+                    Stack<int[]> path = (Stack<int[]>) b.getSerializable("path");
+                    int[][] binaryMaze = (int[][]) b.getSerializable("binary");
+
+                    stopLoading();
+                    drawSolution(path, binaryMaze, image);
+                    break;
+                case MAZE_NOT_SOLVED:
+                    stopLoading();
+
+                    failText.setVisibility(View.VISIBLE);
+                    backButton.setVisibility(View.VISIBLE);
+                    break;
+            }
+        }
     }
 
+    private class SolutionRunnable implements Runnable {
+        Bitmap image;
+        int[][] corners;
+
+        private SolutionRunnable(Bitmap image, int[][] corners) {
+            // store parameter for later user
+            this.image = image;
+            this.corners = corners;
+        }
+
+        public void run() {
+            int state;
+            final long startTime = System.currentTimeMillis();
+
+            Mat croppedMaze = getCroppedMaze(corners, image);
+            int[][] croppedBinaryMaze = CVUtils.getBinaryArray(croppedMaze);
+
+            // Runs A* on the maze and gets the solution stack
+            //TODO: Entrance-finding doesn't work if they're on the top and bottom
+            Asolution mySol = new Asolution(croppedBinaryMaze);
+            Stack<int[]> solution = mySol.getPath();
+
+            final long executionTime = System.currentTimeMillis() - startTime;
+
+            if (solution == null) {
+                Log.e(TAG, "solveMaze: " + "Could not solve maze");
+                state = MAZE_NOT_SOLVED;
+            } else {
+                Log.i(TAG, "solveMaze: MAZE SOLVED");
+                state = MAZE_SOLVED;
+            }
+
+            Bundle b = new Bundle();
+            b.putSerializable("path",solution);
+            b.putSerializable("binary", croppedBinaryMaze);
+            Message completeMessage = mHandler.obtainMessage(state, b);
+
+            if (executionTime < MIN_LOAD_TIME) // Forces the loading icon showing for MIN_LOAD_TIME
+                android.os.SystemClock.sleep(MIN_LOAD_TIME - executionTime);
+            completeMessage.sendToTarget();
+        }
+    }
+
+    private void stopLoading() {
+        loadingIcon.setVisibility(View.INVISIBLE);
+        loadingText.setVisibility(View.INVISIBLE);
+    }
+
+    private void startLoading() {
+        loadingIcon.setVisibility(View.VISIBLE);
+        loadingText.setVisibility(View.VISIBLE);
+    }
 
     // Crops the image in a rectangle bounding the corners and applies a threshold to obtain binary
     // values. 1s represent walls and 0s are paths.
@@ -264,13 +335,15 @@ public class SolutionActivity extends Activity {
     }
 
     private Bitmap putOverlay(Bitmap base, Bitmap overlay, int x, int y) {
-        base = base.copy(Bitmap.Config.ARGB_8888, true);
-        Canvas canvas = new Canvas(base);
+        Bitmap baseCpy = base.copy(Bitmap.Config.ARGB_8888, true);
         Paint p = new Paint();
         p.setColor(Color.RED);
+
+        Canvas canvas = new Canvas(baseCpy);
         canvas.drawCircle(x, y, 5, p);
         canvas.drawBitmap(overlay, x, y, null);
-        return base;
+
+        return baseCpy;
     }
 
 

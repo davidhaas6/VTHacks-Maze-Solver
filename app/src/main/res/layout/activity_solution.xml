@@ -7,17 +7,45 @@
     tools:context="com.davidhaas.mazesolver.SolutionActivity"
     android:background="#78909C">
 
-    <RelativeLayout
-        android:id="@+id/loadingPanel"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center" >
+    <com.wang.avi.AVLoadingIndicatorView
+        android:id="@+id/loadingIcon"
+        style="@style/AVLoadingIndicatorView.Large"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
 
-        <ProgressBar
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:indeterminate="true" />
-    </RelativeLayout>
+        app:indicatorColor="#CFD8DC"
+        app:indicatorName="PacmanIndicator"
+        app:layout_constraintBottom_toTopOf="@+id/middleGuideline"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/loadingText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:text="@string/solving_maze"
+        android:textAlignment="center"
+        android:textSize="14sp"
+        app:layout_constraintTop_toTopOf="@+id/middleGuideline"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/failText"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+
+        android:text="@string/not_solvable"
+        android:textAlignment="center"
+        android:textSize="27sp"
+        app:layout_constraintTop_toTopOf="@+id/loadingIcon"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <ImageView
         android:id="@+id/imageView"
@@ -25,5 +53,39 @@
         android:layout_height="wrap_content"
         android:adjustViewBounds="true"
         android:scaleType="centerCrop"/>
+
+    <Button
+        android:id="@+id/backButton"
+        android:background="@drawable/custom_button"
+
+        android:text="@string/back"
+        android:textAllCaps="false"
+        android:textColor="#262626"
+        android:textSize="19sp"
+
+        android:layout_width="160dp"
+        android:layout_height="55dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/bottomGuideline" />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/middleGuideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="330dp" />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/bottomGuideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="400dp" />
 
 </android.support.constraint.ConstraintLayout>
