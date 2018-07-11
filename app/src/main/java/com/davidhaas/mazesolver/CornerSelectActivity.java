@@ -17,6 +17,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 
@@ -41,6 +42,8 @@ public class CornerSelectActivity extends Activity {
 
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //Remove notification bar
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_corner_select);
         Button solveMazeButton = findViewById(R.id.solveMaze);
@@ -74,7 +77,7 @@ public class CornerSelectActivity extends Activity {
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
 
         // The height of the available space to show the image
-        final int displayHeight = displayMetrics.heightPixels - getStatusBarHeight();
+        final int displayHeight = displayMetrics.heightPixels;
         final double view_scale_ratio = (double) image.getWidth() / displayMetrics.widthPixels;
         final int scaledImageHeight = (int) (image.getHeight() / view_scale_ratio);
 

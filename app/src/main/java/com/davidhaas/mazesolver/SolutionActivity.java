@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -69,6 +70,8 @@ public class SolutionActivity extends Activity {
 
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //Remove notification bar
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_solution);
         imageView = findViewById(R.id.imageView);
@@ -90,9 +93,9 @@ public class SolutionActivity extends Activity {
             if (image.getWidth() > image.getHeight())
                 image = rotateBitmap(image, 90);
 
-            //getCroppedMatrix(corners);
+            displayMat(getCroppedMaze(corners, image));
 
-            solveMaze(corners, image);
+            //solveMaze(corners, image);
             loadingBar.setVisibility(View.GONE);
         } catch (Exception e) {
             e.printStackTrace();
