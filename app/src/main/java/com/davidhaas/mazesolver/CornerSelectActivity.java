@@ -46,6 +46,7 @@ public class CornerSelectActivity extends Activity {
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_corner_select);
+
         Button solveMazeButton = findViewById(R.id.solveMaze);
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/press_start_2p.ttf");
         solveMazeButton.setTypeface(font);
@@ -63,35 +64,29 @@ public class CornerSelectActivity extends Activity {
         if(image.getWidth() > image.getHeight())
             image = rotateBitmap(image, 90);
 
-        // Scales and set the bitmap
-        //TODO: Maybe rescale it in SolutionActivity?
-        // image = getResizedBitmap(image, .5f); // For efficiency
+        // Sets the bitmap
         ImageView imageView = findViewById(R.id.imageView);
         imageView.setImageBitmap(image);
-
-        //imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
         // Gets the ratio between the appeared image height and the actual height so we can map
         // screen touches to pixels on the image
         DisplayMetrics displayMetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
 
-        // The height of the available space to show the image
-        final int displayHeight = displayMetrics.heightPixels;
         final double view_scale_ratio = (double) image.getWidth() / displayMetrics.widthPixels;
         final int scaledImageHeight = (int) (image.getHeight() / view_scale_ratio);
 
         // The amount of the image that gets cropped off the top and bottom due to scaling
         final int croppedTops;
-        if ((scaledImageHeight - displayHeight) / 2 < 0)
+        if ((scaledImageHeight - displayMetrics.heightPixels) / 2 < 0)
             croppedTops = 0;
         else
-            croppedTops = (scaledImageHeight - displayHeight) / 2;
+            croppedTops = (scaledImageHeight - displayMetrics.heightPixels) / 2;
 
         // Initializes the selection box
         final SelectionBox selectionBox = findViewById(R.id.selectionBox);
-        if (displayHeight < scaledImageHeight) // Chooses the smaller of image height or display height
-            selectionBox.setImageBounds(displayMetrics.widthPixels, displayHeight);
+        if (displayMetrics.heightPixels < scaledImageHeight) // Chooses the smaller of image height or display height
+            selectionBox.setImageBounds(displayMetrics.widthPixels, displayMetrics.heightPixels);
         else
             selectionBox.setImageBounds(displayMetrics.widthPixels, scaledImageHeight);
 
@@ -130,15 +125,6 @@ public class CornerSelectActivity extends Activity {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
-    public int getStatusBarHeight() {
-        int result = 0;
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            result = getResources().getDimensionPixelSize(resourceId);
-        }
-        return result;
     }
 
     public String printArr(int[][] arr) {
