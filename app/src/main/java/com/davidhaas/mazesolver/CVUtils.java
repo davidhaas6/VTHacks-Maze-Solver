@@ -20,8 +20,6 @@ import java.util.List;
 
 import static org.opencv.core.CvType.CV_8U;
 import static org.opencv.core.CvType.CV_8UC1;
-import static org.opencv.imgproc.Imgproc.BORDER_TRANSPARENT;
-import static org.opencv.imgproc.Imgproc.INTER_LINEAR;
 import static org.opencv.imgproc.Imgproc.WARP_INVERSE_MAP;
 import static org.opencv.imgproc.Imgproc.boundingRect;
 
@@ -169,7 +167,8 @@ public class CVUtils {
         Mat mask8 = Mat.zeros(image.size(), CV_8UC1);
 
         // Creates a mask in the shape of the polygon
-        Core.fillConvexPoly(mask8, cornerMat, new Scalar(255, 255, 255));
+        //Core.fillConvexPoly(mask8, cornerMat, new Scalar(255, 255, 255));
+        Imgproc.fillConvexPoly(mask8, cornerMat, new Scalar(255, 255, 255));
 
         // Copies the relevant part of the image into the polygon mask
         Mat result = new Mat(image.size(), image.type(), new Scalar(255, 255, 255));

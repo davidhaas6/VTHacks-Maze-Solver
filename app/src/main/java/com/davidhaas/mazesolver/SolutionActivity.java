@@ -25,6 +25,9 @@ import android.widget.TextView;
 import com.davidhaas.mazesolver.pathfinding.Asolution;
 import com.wang.avi.AVLoadingIndicatorView;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvException;
@@ -64,17 +67,23 @@ public class SolutionActivity extends Activity {
     private AVLoadingIndicatorView loadingIcon;
     private Button backButton;
     private Handler mHandler;
+    private Runnable solnRunnable;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+//        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2,
+//                this, mOpenCVCallBack)) {
+//            Log.e("TEST", "Cannot connect to OpenCV Manager");
+//        }
+
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         //Remove notification bar
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
+        
         setContentView(R.layout.activity_solution);
 
         imageView = findViewById(R.id.imageView);
@@ -108,7 +117,7 @@ public class SolutionActivity extends Activity {
 
             mHandler = new MyHandler(Looper.getMainLooper(), image);
 
-            Runnable solnRunnable = new SolutionRunnable(image, corners);
+            solnRunnable = new SolutionRunnable(image, corners);
             new Thread(solnRunnable).start();
 
         } catch (Exception e) {
@@ -124,6 +133,23 @@ public class SolutionActivity extends Activity {
         });
 
     }
+
+    private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS: {
+                    //your code
+                    new Thread(solnRunnable).start();
+                }
+                break;
+                default: {
+                    super.onManagerConnected(status);
+                }
+                break;
+            }
+        }
+    };
 
     private class MyHandler extends Handler {
         Bitmap image;
@@ -177,6 +203,7 @@ public class SolutionActivity extends Activity {
             Stack<int[]> solution = mySol.getPath();
 
             final long executionTime = System.currentTimeMillis() - startTime;
+            Log.i(TAG, "run: Execution time: " + executionTime + " ms");
 
             if (solution == null) {
                 Log.e(TAG, "solveMaze: " + "Could not solve maze");
@@ -389,7 +416,8 @@ public class SolutionActivity extends Activity {
         for (Rect r : rects) {
             org.opencv.core.Point p1 = new org.opencv.core.Point(r.x, r.y);
             org.opencv.core.Point p2 = new org.opencv.core.Point(r.x + r.width, r.y + r.height);
-            Core.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
+            //Core.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
+            Imgproc.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
         }
 
         displayMat(tmp);
