@@ -7,6 +7,13 @@
     tools:context="com.davidhaas.mazesolver.MainActivity"
     android:background="#78909C">
 
+    <ImageView
+        android:id="@+id/imgBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha=".07"
+        android:scaleType="center"/>
+
     <TextView
         android:id="@+id/textView"
 
@@ -14,6 +21,7 @@
         android:textAllCaps="false"
         android:textSize="50sp"
         android:textAlignment="center"
+        android:textColor="#283135"
 
         android:layout_width="300dp"
         android:layout_height="wrap_content"

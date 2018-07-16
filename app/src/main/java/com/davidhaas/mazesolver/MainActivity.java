@@ -65,20 +65,12 @@ public class MainActivity extends Activity {
         //Remove notification bar
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-
         setContentView(R.layout.activity_main);
 
-        //Bitmap backgBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.maze_background));
-        //Bitmap logoBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.logo));
-
-//        //fill the background ImageView with the resized image
-//        ImageView background = findViewById(R.id.imgBackground);
-//        background.setScaleType(ImageView.ScaleType.CENTER);
-//        background.setImageBitmap(backgBMP);
-
-        //ImageView logo = findViewById(R.id.logo);
-        //logo.setImageBitmap(logoBMP);
-
+        // Sets the background bmp
+        Bitmap backgBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.maze_background));
+        ImageView background = findViewById(R.id.imgBackground);
+        background.setImageBitmap(backgBMP);
 
         // Creates the buttons with their listeners
         Button takePhotoButton = findViewById(R.id.takePhotoButton);
