@@ -25,20 +25,12 @@ import android.widget.TextView;
 import com.davidhaas.mazesolver.pathfinding.Asolution;
 import com.wang.avi.AVLoadingIndicatorView;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
-import org.opencv.core.Core;
-import org.opencv.core.CvException;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.ml.LogisticRegression;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,10 +39,10 @@ import java.util.Stack;
 import android.graphics.Point;
 
 /**
- * Name: SolutionActivity
- * Purpose: Displays the solution of the maze.
- * Author: David Haas
- * Created: 6/28/18
+ * SolutionActivity
+ * Parses the maze image into an array then computes and displays its solution.
+ * @author  David Haas
+ * @since   6/28/18
  */
 public class SolutionActivity extends Activity {
     // TODO: Remove OpenCV dependencies https://developer.android.com/reference/android/graphics/Matrix, https://goo.gl/Qh8THg
@@ -58,16 +50,19 @@ public class SolutionActivity extends Activity {
     private static final String TAG = "SolutionActivity";
     private final int SCALE_FACTOR = 2; // The amount the maze scales down before using A*
     private final int MAZE_SOLVED = 1, MAZE_NOT_SOLVED = 0, IMG_DEBUG = -1;
-    private final long MIN_LOAD_TIME = 1000;
-    private Point mazeCorner; // TODO: Can you get rid of this global variable?
+    private final long MIN_LOAD_TIME = 1000; // The min time to show the loading icon
+    private Point mazeCorner;
     private ImageView imageView;
     private TextView loadingText;
     private TextView failText;
     private AVLoadingIndicatorView loadingIcon;
     private Button backButton;
     private Handler mHandler;
-    private Runnable solnRunnable;
 
+    /**
+     * Instantiates the UI elements and starts the solution thread.
+     * @param savedInstanceState The saved instance state.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -108,9 +103,9 @@ public class SolutionActivity extends Activity {
             if (image.getWidth() > image.getHeight())
                 image = rotateBitmap(image, 90);
 
-            mHandler = new MyHandler(Looper.getMainLooper(), image);
+            mHandler = new MazeUIHandler(Looper.getMainLooper(), image);
 
-            solnRunnable = new SolutionRunnable(image, corners);
+            Runnable solnRunnable = new SolutionRunnable(image, corners);
             new Thread(solnRunnable).start();
 
         } catch (Exception e) {
@@ -127,18 +122,30 @@ public class SolutionActivity extends Activity {
 
     }
 
-    private class MyHandler extends Handler {
+    /**
+     * The handler that interacts with the solution thread to display the maze's results in the main
+     * UI thread.
+     */
+    private class MazeUIHandler extends Handler {
         private Bitmap image;
         private boolean debugging;
 
-        private MyHandler(Looper myLooper, Bitmap mazeImg) {
+        /**
+         * The constructor for the UI handler.
+         * @param myLooper The main thread's looper.
+         * @param image The image containing the maze.
+         */
+        private MazeUIHandler(Looper myLooper, Bitmap image) {
             super(myLooper);
-            this.image = mazeImg;
+            this.image = image;
             debugging = false;
         }
 
+        /**
+         * Receives the solution thread's updates and displays the results on the main UI.
+         * @param msg The message containing the maze's results.
+         */
         public void handleMessage(Message msg) {
-
             int state = msg.what;
 
             switch (state) {
@@ -177,16 +184,28 @@ public class SolutionActivity extends Activity {
         }
     }
 
+    /**
+     * A thread to solve the maze in the background while the loading icon is being displayed.
+     */
     private class SolutionRunnable implements Runnable {
         Bitmap image;
         int[][] corners;
 
+        /**
+         * The constructor for the solution runnable thread
+         * @param image The image containing the maze
+         * @param corners The four corners that define the user's selected region
+         */
         private SolutionRunnable(Bitmap image, int[][] corners) {
             // store parameter for later user
             this.image = image;
             this.corners = corners;
         }
 
+        /**
+         * Crops the maze, converts it to a binary array, and runs A* over it to find the solution.
+         * Sends the path and the maze to mHandler to be drawn in the main thread.
+         */
         public void run() {
             int state;
             final long startTime = System.currentTimeMillis();
@@ -225,16 +244,27 @@ public class SolutionActivity extends Activity {
         }
     }
 
+    /**
+     * Hides the loading icon and text.
+     */
     private void stopLoading() {
         loadingIcon.setVisibility(View.INVISIBLE);
         loadingText.setVisibility(View.INVISIBLE);
     }
 
+    /**
+     * Shows the loading icon and text.
+     */
     private void startLoading() {
         loadingIcon.setVisibility(View.VISIBLE);
         loadingText.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * A debug method to prematurely send a Mat to mHandler. This is used to view the Mat of the maze
+     *  in the solution thread before it is solved.
+     * @param mat The Mat to be viewed.
+     */
     private void sendMat2Handler(Mat mat) {
         Bundle b = new Bundle();
         b.putParcelable("img", CVUtils.mat2BMP(mat));
@@ -242,35 +272,39 @@ public class SolutionActivity extends Activity {
         completeMessage.sendToTarget();
     }
 
-    // Crops the image in a rectangle bounding the corners and applies a threshold to obtain binary
-    // values. 1s represent walls and 0s are paths.
+    /**
+     * Locates the maze in the selected region, crops it and downscales it.
+     * @param corners The four corners that define the user's selected region
+     * @param image The image containing the maze
+     * @return Mat The cropped and binary-ized maze
+     */
     private Mat getCroppedMaze(int[][] corners, Bitmap image) {
         // Converts the bitmap to an OpenCV matrix
         Mat img_matrix = new Mat();
         Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
         Utils.bitmapToMat(bmp32, img_matrix);
 
+        // Convert to gray, blur, and threshold.
         Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
-
         Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(11, 11), 0);
-
         Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 55, 5);
 
         // Crops the image AFTER the thresholding to avoid those border lines
         img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
 
-        //sendMat2Handler(img_matrix);
-
+        // Gets the two contours with the longest perimeter. Since mazes can have a line drawn
+        // through them that splits them in half (the solution), the maze is actually two separate
+        // objects, necessitating us to retrieve two contours instead of one.
         List<MatOfPoint> mazePerim = CVUtils.largest2PerimContours(img_matrix);
+
         if (mazePerim != null) {
+            // Get the bounding rects
             ArrayList<Rect> rects = new ArrayList<>();
             for (MatOfPoint c : mazePerim)
                 rects.add(Imgproc.boundingRect(c));
-            //displayMatCnts(img_matrix, mazePerim);
 
+            // Combine the bounding rects of the maze perimeter into one, encompassing bounding rect
             Rect combined = CVUtils.combineRects(rects.get(0), rects.get(1));
-            rects.clear();
-            rects.add(combined);
 
             // Contracts the bounding box to help eliminate whitespace on the edge of the maze
             final int contract_px = 3;
@@ -286,15 +320,11 @@ public class SolutionActivity extends Activity {
                     {combined.x, combined.y + combined.height}
             };
 
-            //sendMat2Handler(drawCnts(img_matrix, mazePerim));
+            //img_matrix = CVUtils.cropQuadrilateral(img_matrix, bounds);
+            img_matrix = img_matrix.submat(combined);
 
-            img_matrix = CVUtils.cropQuadrilateral(img_matrix, bounds);
-
-            //sendMat2Handler(img_matrix);
-
-
-            // Find the lowest x and y coord because that will define the rect that the first pass
-            // cropped maze was in
+            // Find the lowest x and y coords because that will define the rect that the first pass
+            // cropped maze was inside of
             int lowestX = corners[0][0], lowestY = corners[0][1];
             for (int[] p : corners) {
                 if (p[0] < lowestX)
@@ -303,9 +333,9 @@ public class SolutionActivity extends Activity {
                     lowestY = p[1];
             }
 
+            // The point in which the newly cropped maze lies in the original image.
             mazeCorner = new Point(combined.x + lowestX, combined.y + lowestY);
         }
-
 
         // Resize the image
         Size dstSize = new Size(img_matrix.width() / SCALE_FACTOR, img_matrix.height() / SCALE_FACTOR);
@@ -316,17 +346,17 @@ public class SolutionActivity extends Activity {
 
         Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
 
-        //sendMat2Handler(img_matrix);
-
         return img_matrix;
     }
 
-    // Writes the solution to the deskewed matrix, and writes a bitmap image in which all the
-    // non-solution coordinates have a alpha value 0, denoting their transparency. The bitmap image
-    // then undergoes a reverse of the perspective transform applied to the maze and is overlayed
-    // over the src image.
-    private void drawSolution(Stack<int[]> path, int[][] mazetrix, Bitmap image) {
 
+    /**
+     * Overlays the solution on top of the original maze image.
+     * @param path The solution of the maze
+     * @param mazetrix The binary array representing the maze
+     * @param image The original image containing the maze
+     */
+    private void drawSolution(Stack<int[]> path, int[][] mazetrix, Bitmap image) {
         // Sets the value of the solution pixels to 2
         for (int[] coords : path) {
             mazetrix[coords[0]][coords[1]] = 2;
@@ -334,7 +364,6 @@ public class SolutionActivity extends Activity {
 
         int[][] pixOut = new int[mazetrix.length][mazetrix[0].length];
 
-        // TODO: MAke bloom amount related to the perimeter instead? Like lower perimeter, higher bloom. Or maybe compare peri to area.
         // The radius that the path "puffs" out in
         final int bloomAmount = (int) ((mazetrix.length * mazetrix[0].length) * Math.pow(SCALE_FACTOR, 2) / 50000);
         Log.i(TAG, "drawSolution: bloom: " + bloomAmount);
@@ -349,6 +378,7 @@ public class SolutionActivity extends Activity {
                 if (mazetrix[i][j] == 2) {
                     pixOut[i][j] = opaque;
 
+                    // Draw the bloom
                     int y;
                     for (int x = -bloomAmount; x <= bloomAmount; x++) {
                         y = (int) Math.round(Math.sqrt(bloomAmount * bloomAmount - x * x));
@@ -365,8 +395,9 @@ public class SolutionActivity extends Activity {
                 }
             }
         }
-        int[] pixels = get1DArray(pixOut, 1);
 
+        // Create a bitmap out of the solution and scale it according to SCALE_FACTOR
+        int[] pixels = get1DArray(pixOut);
         Bitmap solution = Bitmap.createBitmap(pixels, mazetrix[0].length, mazetrix.length, Bitmap.Config.ARGB_8888);
         solution = Bitmap.createScaledBitmap(
                 solution,
@@ -375,53 +406,40 @@ public class SolutionActivity extends Activity {
                 true
         );
 
+        // Overlay the image
         Bitmap out = putOverlay(image, solution, mazeCorner.x, mazeCorner.y);
         imageView.setImageBitmap(out);
     }
 
+    /**
+     * Overlays on bitmap on top of another.
+     * @param base The base image
+     * @param overlay The overlaid image
+     * @param x The x-coordinate of where the top left corner of overlay is placed onto base
+     * @param y The y-coordinate of where the top left corner of overlay is placed onto base
+     * @return Bitmap The bitmap of the overlay imaged on top of the base
+     */
     private Bitmap putOverlay(Bitmap base, Bitmap overlay, int x, int y) {
+        // Copy the bmp to ensure that it's mutable
         Bitmap baseCpy = base.copy(Bitmap.Config.ARGB_8888, true);
+
         Paint p = new Paint();
         p.setColor(Color.RED);
 
+        // Draw the solution
         Canvas canvas = new Canvas(baseCpy);
-        canvas.drawCircle(x, y, 5, p);
         canvas.drawBitmap(overlay, x, y, null);
 
         return baseCpy;
     }
 
-
-    private void displayMat(Mat mat) {
-        Bitmap bmp = CVUtils.mat2BMP(mat);
-        if (bmp != null)
-            imageView.setImageBitmap(bmp);
-        else
-            Log.e(TAG, "displayMat: Bitmap is null!");
-    }
-
-    private String printArr(int[][] arr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[ ");
-        for (int q = 0; q < arr.length; q++) {
-            if (q > 0)
-                sb.append("\t");
-            sb.append("[");
-            for (int h = 0; h < arr[q].length - 1; h++) {
-                sb.append(arr[q][h]);
-                sb.append(", ");
-            }
-            sb.append(arr[q][arr[q].length - 1]);
-            sb.append("],\n");
-        }
-        sb.delete(sb.length() - 2, sb.length());
-        sb.append(" ]");
-        return sb.toString();
-    }
-
-
-    private int[] get1DArray(int[][] arr, int numChannels) {
-        int[] ret = new int[arr.length * arr[0].length * numChannels];
+    /**
+     * Converts a 2D array into a 1D array.
+     * @param arr The inputted 2D array to be converted to 1D
+     * @return int[] The 1D version of the inputted 2D array
+     */
+    private int[] get1DArray(int[][] arr) {
+        int[] ret = new int[arr.length * arr[0].length];
         int count = 0;
 
         for (int i = 0; i < arr.length; i++) {
@@ -433,9 +451,23 @@ public class SolutionActivity extends Activity {
         return ret;
     }
 
+    /**
+     * Rotates a bitmap image by a specified angle.
+     * @param source The bitmap to be rotated
+     * @param angle The angle to rotate the bitmap at
+     * @return Bitmap The rotated bitmap
+     */
     private static Bitmap rotateBitmap(Bitmap source, float angle) {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    }
+
+    private void displayMat(Mat mat) {
+        Bitmap bmp = CVUtils.mat2BMP(mat);
+        if (bmp != null)
+            imageView.setImageBitmap(bmp);
+        else
+            Log.e(TAG, "displayMat: Bitmap is null!");
     }
 }
