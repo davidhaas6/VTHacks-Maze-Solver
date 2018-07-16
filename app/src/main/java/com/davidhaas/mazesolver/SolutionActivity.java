@@ -38,6 +38,7 @@ import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.ml.LogisticRegression;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,8 +59,8 @@ public class SolutionActivity extends Activity {
 
     private static final String TAG = "SolutionActivity";
     private final int SCALE_FACTOR = 2; // The amount the maze scales down before using A*
-    private final int MAZE_SOLVED = 1, MAZE_NOT_SOLVED = 0;
-    private final long MIN_LOAD_TIME = 1500;
+    private final int MAZE_SOLVED = 1, MAZE_NOT_SOLVED = 0, IMG_DEBUG = -1;
+    private final long MIN_LOAD_TIME = 1000;
     private Point mazeCorner; // TODO: Can you get rid of this global variable?
     private ImageView imageView;
     private TextView loadingText;
@@ -74,16 +75,11 @@ public class SolutionActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-//        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2,
-//                this, mOpenCVCallBack)) {
-//            Log.e("TEST", "Cannot connect to OpenCV Manager");
-//        }
-
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         //Remove notification bar
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        
+
         setContentView(R.layout.activity_solution);
 
         imageView = findViewById(R.id.imageView);
@@ -134,48 +130,52 @@ public class SolutionActivity extends Activity {
 
     }
 
-    private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS: {
-                    //your code
-                    new Thread(solnRunnable).start();
-                }
-                break;
-                default: {
-                    super.onManagerConnected(status);
-                }
-                break;
-            }
-        }
-    };
-
     private class MyHandler extends Handler {
-        Bitmap image;
+        private Bitmap image;
+        private boolean debugging;
+
         private MyHandler(Looper myLooper, Bitmap mazeImg) {
             super(myLooper);
             this.image = mazeImg;
+            debugging = false;
         }
+
         public void handleMessage(Message msg) {
 
             int state = msg.what;
 
             switch (state) {
                 case MAZE_SOLVED:
-                    Bundle b = (Bundle) msg.obj;
-                    Stack<int[]> path = (Stack<int[]>) b.getSerializable("path");
-                    int[][] binaryMaze = (int[][]) b.getSerializable("binary");
+                    if (!debugging) {
+                        Bundle b = (Bundle) msg.obj;
+                        Stack<int[]> path = (Stack<int[]>) b.getSerializable("path");
+                        int[][] binaryMaze = (int[][]) b.getSerializable("binary");
 
-                    stopLoading();
-                    drawSolution(path, binaryMaze, image);
+                        stopLoading();
+                        drawSolution(path, binaryMaze, image);
+                        backButton.setVisibility(View.VISIBLE);
+                    }
                     break;
                 case MAZE_NOT_SOLVED:
+                    if (!debugging) {
+                        stopLoading();
+                        failText.setVisibility(View.VISIBLE);
+                        backButton.setVisibility(View.VISIBLE);
+                    }
+                    break;
+                case IMG_DEBUG:
+                    debugging = true;
+
                     stopLoading();
 
-                    failText.setVisibility(View.VISIBLE);
+                    Bundle b1 = (Bundle) msg.obj;
+                    image = b1.getParcelable("img");
+                    Log.i(TAG, "handleMessage: displaying debug");
+
+                    imageView.setImageBitmap(image);
                     backButton.setVisibility(View.VISIBLE);
                     break;
+
             }
         }
     }
@@ -199,27 +199,32 @@ public class SolutionActivity extends Activity {
 
             // Runs A* on the maze and gets the solution stack
             //TODO: Entrance-finding doesn't work if they're on the top and bottom
-            Asolution mySol = new Asolution(croppedBinaryMaze);
-            Stack<int[]> solution = mySol.getPath();
+            Stack<int[]> solution = null;
+            try {
+                Asolution mySol = new Asolution(croppedBinaryMaze);
+                solution = mySol.getPath();
+
+                if (solution == null)
+                    state = MAZE_NOT_SOLVED;
+                else
+                    state = MAZE_SOLVED;
+
+            } catch (Exception e) {
+                Log.e(TAG, "run: Exception when solving maze: ", e);
+                state = MAZE_NOT_SOLVED;
+            }
 
             final long executionTime = System.currentTimeMillis() - startTime;
             Log.i(TAG, "run: Execution time: " + executionTime + " ms");
 
-            if (solution == null) {
-                Log.e(TAG, "solveMaze: " + "Could not solve maze");
-                state = MAZE_NOT_SOLVED;
-            } else {
-                Log.i(TAG, "solveMaze: MAZE SOLVED");
-                state = MAZE_SOLVED;
-            }
+            if (executionTime < MIN_LOAD_TIME) // Forces the loading icon showing for MIN_LOAD_TIME
+                android.os.SystemClock.sleep(MIN_LOAD_TIME - executionTime);
 
             Bundle b = new Bundle();
-            b.putSerializable("path",solution);
+            b.putSerializable("path", solution);
             b.putSerializable("binary", croppedBinaryMaze);
             Message completeMessage = mHandler.obtainMessage(state, b);
 
-            if (executionTime < MIN_LOAD_TIME) // Forces the loading icon showing for MIN_LOAD_TIME
-                android.os.SystemClock.sleep(MIN_LOAD_TIME - executionTime);
             completeMessage.sendToTarget();
         }
     }
@@ -234,6 +239,13 @@ public class SolutionActivity extends Activity {
         loadingText.setVisibility(View.VISIBLE);
     }
 
+    private void sendMat2Handler(Mat mat) {
+        Bundle b = new Bundle();
+        b.putParcelable("img", mat2BMP(mat));
+        Message completeMessage = mHandler.obtainMessage(IMG_DEBUG, b);
+        completeMessage.sendToTarget();
+    }
+
     // Crops the image in a rectangle bounding the corners and applies a threshold to obtain binary
     // values. 1s represent walls and 0s are paths.
     private Mat getCroppedMaze(int[][] corners, Bitmap image) {
@@ -244,12 +256,15 @@ public class SolutionActivity extends Activity {
 
         Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
 
-        img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
-
-        Imgproc.GaussianBlur(img_matrix, img_matrix, new Size(1, 1), 0);
+        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(11, 11), 0);
 
         //TODO: consider making blockSize and C based off of image size?
-        Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
+        Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 55, 5);
+
+        // Crops the image AFTER the thresholding to avoid those border lines
+        img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
+
+        //sendMat2Handler(img_matrix);
 
         List<MatOfPoint> mazePerim = CVUtils.largest2PerimContours(img_matrix);
         if (mazePerim != null) {
@@ -262,7 +277,13 @@ public class SolutionActivity extends Activity {
             rects.clear();
             rects.add(combined);
 
-            //displayMatRects(img_matrix, rects);
+            // Contracts the bounding box to help eliminate whitespace on the edge of the maze
+            final int contract_px = 3;
+            combined.x += contract_px;
+            combined.y += contract_px;
+            combined.width -= contract_px*2;
+            combined.height -= contract_px*2;
+
             int[][] bounds = new int[][]{
                     {combined.x, combined.y},
                     {combined.x + combined.width, combined.y},
@@ -270,8 +291,12 @@ public class SolutionActivity extends Activity {
                     {combined.x, combined.y + combined.height}
             };
 
+            //sendMat2Handler(drawCnts(img_matrix, mazePerim));
+
             img_matrix = CVUtils.cropQuadrilateral(img_matrix, bounds);
-            //displayMat(img_matrix);
+
+            //sendMat2Handler(img_matrix);
+
 
             // Find the lowest x and y coord because that will define the rect that the first pass
             // cropped maze was in
@@ -286,6 +311,7 @@ public class SolutionActivity extends Activity {
             mazeCorner = new Point(combined.x + lowestX, combined.y + lowestY);
         }
 
+
         // Resize the image
         Size dstSize = new Size(img_matrix.width() / SCALE_FACTOR, img_matrix.height() / SCALE_FACTOR);
         Mat dst = new Mat();
@@ -293,11 +319,10 @@ public class SolutionActivity extends Activity {
         img_matrix = dst;
         Log.i(TAG, "getCroppedMaze: Scaled image size: " + dstSize);
 
-
         //TODO: consider making blockSize and C based off of image size?
         Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
 
-        //displayMat(img_matrix);
+        //sendMat2Handler(img_matrix);
 
         return img_matrix;
     }
@@ -337,7 +362,7 @@ public class SolutionActivity extends Activity {
                             if (0 <= i + k && i + k < mazetrix.length && 0 <= j + x && j + x < mazetrix[0].length)
                                 if (mazetrix[i + k][j + x] == 0)
                                     pixOut[i + k][j + x] = opaque;
-                                else if (mazetrix[i+k][j+x] == 1)
+                                else if (mazetrix[i + k][j + x] == 1)
                                     break;
                         }
                     }
@@ -388,6 +413,11 @@ public class SolutionActivity extends Activity {
         try {
             if (mat.channels() == 1)
                 Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+            else if (mat.channels() == 4)
+                tmp = mat;
+            else
+                Log.i(TAG, "mat2BMP: ERROR: CHANNELS = " + mat.channels());
+
             bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(tmp, bmp);
         } catch (CvException e) {
@@ -397,21 +427,29 @@ public class SolutionActivity extends Activity {
         return bmp;
     }
 
-    private void displayMatCnts(Mat mat, List<MatOfPoint> contours) {
+    private Mat drawCnts(Mat mat, List<MatOfPoint> contours) {
         Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
 
         if (mat.channels() == 1)
             Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+        else if (mat.channels() == 4)
+            tmp = mat;
+        else
+            Log.i(TAG, "drawCnts: ERROR: CHANNELS = " + mat.channels());
         Imgproc.drawContours(tmp, contours, -1, new Scalar(0, 255, 0, 255), 1);
 
-        displayMat(tmp);
+        return tmp;
     }
 
-    private void displayMatRects(Mat mat, List<Rect> rects) {
+    private Mat drawRects(Mat mat, List<Rect> rects) {
         Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
 
         if (mat.channels() == 1)
             Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+        else if (mat.channels() == 4)
+            tmp = mat;
+        else
+            Log.i(TAG, "drawRects: ERROR: CHANNELS = " + mat.channels());
 
         for (Rect r : rects) {
             org.opencv.core.Point p1 = new org.opencv.core.Point(r.x, r.y);
@@ -420,7 +458,7 @@ public class SolutionActivity extends Activity {
             Imgproc.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
         }
 
-        displayMat(tmp);
+        return tmp;
     }
 
     private String printArr(int[][] arr) {
