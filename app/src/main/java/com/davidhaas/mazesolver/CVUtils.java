@@ -237,23 +237,16 @@ public class CVUtils {
     }
 
     private static boolean isContourSquare(MatOfPoint2f thisContour) {
-
-        Rect ret = null;
-
         MatOfPoint approxContour = new MatOfPoint();
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
 
         double cntPerim = Imgproc.arcLength(thisContour, true);
 
-        Imgproc.approxPolyDP(thisContour, approxContour2f, cntPerim * .1, true);
+        Imgproc.approxPolyDP(thisContour, approxContour2f, cntPerim * .01, true);
 
         approxContour2f.convertTo(approxContour, CvType.CV_32S);
 
-        if (approxContour.size().height == 4) {
-            ret = Imgproc.boundingRect(approxContour);
-        }
-
-        return (ret != null);
+        return approxContour2f.height() == 4;
     }
 
     public static Rect combineRects(Rect r1, Rect r2) {
