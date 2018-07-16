@@ -27,7 +27,7 @@ public class SelectionBox extends View {
         super(context, attrs);
         final int radius = 30;
         bPaint = new Paint();
-        bPaint.setColor(Color.argb(210, 204, 230, 153));
+        bPaint.setColor(Color.argb(210, 144,164,174));
         bPaint.setStyle(Paint.Style.STROKE);
         bPaint.setStrokeWidth(8);
 

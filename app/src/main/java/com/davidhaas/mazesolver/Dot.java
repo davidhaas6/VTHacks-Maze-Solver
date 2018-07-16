@@ -65,7 +65,7 @@ public class Dot extends View {
         // Log.i(TAG, "Dot: x: " + boundingBox.left + " y: " + boundingBox.top + " width: " + boundingBox.width() + " height: " + boundingBox.height());
 
         myPaint = new Paint();
-        myPaint.setColor(Color.argb(255, 153, 153, 255));
+        myPaint.setColor(Color.argb(255, 84,110,122));
         myPaint.setAntiAlias(true);
     }
 
