@@ -39,8 +39,8 @@ import java.util.Stack;
 import android.graphics.Point;
 
 /**
- * SolutionActivity
- * Parses the maze image into an array then computes and displays its solution.
+ * Name: SolutionActivity
+ * Purpose: Parses the maze image into an array then computes and displays its solution.
  * @author  David Haas
  * @since   6/28/18
  */
@@ -276,7 +276,7 @@ public class SolutionActivity extends Activity {
      * Locates the maze in the selected region, crops it and downscales it.
      * @param corners The four corners that define the user's selected region
      * @param image The image containing the maze
-     * @return Mat The cropped and binary-ized maze
+     * @return The cropped and binary-ized maze
      */
     private Mat getCroppedMaze(int[][] corners, Bitmap image) {
         // Converts the bitmap to an OpenCV matrix
@@ -417,7 +417,7 @@ public class SolutionActivity extends Activity {
      * @param overlay The overlaid image
      * @param x The x-coordinate of where the top left corner of overlay is placed onto base
      * @param y The y-coordinate of where the top left corner of overlay is placed onto base
-     * @return Bitmap The bitmap of the overlay imaged on top of the base
+     * @return The bitmap of the overlay imaged on top of the base
      */
     private Bitmap putOverlay(Bitmap base, Bitmap overlay, int x, int y) {
         // Copy the bmp to ensure that it's mutable
@@ -436,7 +436,7 @@ public class SolutionActivity extends Activity {
     /**
      * Converts a 2D array into a 1D array.
      * @param arr The inputted 2D array to be converted to 1D
-     * @return int[] The 1D version of the inputted 2D array
+     * @return The 1D version of the inputted 2D array
      */
     private int[] get1DArray(int[][] arr) {
         int[] ret = new int[arr.length * arr[0].length];
@@ -455,7 +455,7 @@ public class SolutionActivity extends Activity {
      * Rotates a bitmap image by a specified angle.
      * @param source The bitmap to be rotated
      * @param angle The angle to rotate the bitmap at
-     * @return Bitmap The rotated bitmap
+     * @return The rotated bitmap
      */
     private static Bitmap rotateBitmap(Bitmap source, float angle) {
         Matrix matrix = new Matrix();
