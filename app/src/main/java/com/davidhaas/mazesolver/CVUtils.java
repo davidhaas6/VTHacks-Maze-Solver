@@ -1,7 +1,10 @@
 package com.davidhaas.mazesolver;
 
+import android.graphics.Bitmap;
 import android.util.Log;
 
+import org.opencv.android.Utils;
+import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
@@ -244,6 +247,61 @@ public class CVUtils {
         Imgproc.approxPolyDP(thisContour, approxContour2f, cntPerim * .01, true);
 
         return approxContour2f.height() == 4;
+    }
+
+    public static Bitmap mat2BMP(Mat mat) {
+        Bitmap bmp = null;
+
+        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
+        try {
+            if (mat.channels() == 1)
+                Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+            else if (mat.channels() == 4)
+                tmp = mat;
+            else
+                Log.i(TAG, "mat2BMP: ERROR: CHANNELS = " + mat.channels());
+
+            bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(tmp, bmp);
+        } catch (CvException e) {
+            Log.d("Exception", e.getMessage());
+        }
+
+        return bmp;
+    }
+
+    public static Mat drawCnts(Mat mat, List<MatOfPoint> contours) {
+        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
+
+        if (mat.channels() == 1)
+            Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+        else if (mat.channels() == 4)
+            tmp = mat;
+        else
+            Log.i(TAG, "drawCnts: ERROR: CHANNELS = " + mat.channels());
+        Imgproc.drawContours(tmp, contours, -1, new Scalar(0, 255, 0, 255), 1);
+
+        return tmp;
+    }
+
+    public static Mat drawRects(Mat mat, List<Rect> rects) {
+        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
+
+        if (mat.channels() == 1)
+            Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+        else if (mat.channels() == 4)
+            tmp = mat;
+        else
+            Log.i(TAG, "drawRects: ERROR: CHANNELS = " + mat.channels());
+
+        for (Rect r : rects) {
+            org.opencv.core.Point p1 = new org.opencv.core.Point(r.x, r.y);
+            org.opencv.core.Point p2 = new org.opencv.core.Point(r.x + r.width, r.y + r.height);
+            //Core.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
+            Imgproc.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
+        }
+
+        return tmp;
     }
 
     public static Rect combineRects(Rect r1, Rect r2) {

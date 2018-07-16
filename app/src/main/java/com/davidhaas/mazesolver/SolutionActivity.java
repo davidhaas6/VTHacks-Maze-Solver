@@ -53,9 +53,7 @@ import android.graphics.Point;
  * Created: 6/28/18
  */
 public class SolutionActivity extends Activity {
-    // TODO: Add loading button while program is solving maze
     // TODO: Remove OpenCV dependencies https://developer.android.com/reference/android/graphics/Matrix, https://goo.gl/Qh8THg
-    //findViewById(R.id.loadingPanel).setVisibility(View.GONE);
 
     private static final String TAG = "SolutionActivity";
     private final int SCALE_FACTOR = 2; // The amount the maze scales down before using A*
@@ -69,7 +67,6 @@ public class SolutionActivity extends Activity {
     private Button backButton;
     private Handler mHandler;
     private Runnable solnRunnable;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -198,7 +195,6 @@ public class SolutionActivity extends Activity {
             int[][] croppedBinaryMaze = CVUtils.getBinaryArray(croppedMaze);
 
             // Runs A* on the maze and gets the solution stack
-            //TODO: Entrance-finding doesn't work if they're on the top and bottom
             Stack<int[]> solution = null;
             try {
                 Asolution mySol = new Asolution(croppedBinaryMaze);
@@ -241,7 +237,7 @@ public class SolutionActivity extends Activity {
 
     private void sendMat2Handler(Mat mat) {
         Bundle b = new Bundle();
-        b.putParcelable("img", mat2BMP(mat));
+        b.putParcelable("img", CVUtils.mat2BMP(mat));
         Message completeMessage = mHandler.obtainMessage(IMG_DEBUG, b);
         completeMessage.sendToTarget();
     }
@@ -258,7 +254,6 @@ public class SolutionActivity extends Activity {
 
         Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(11, 11), 0);
 
-        //TODO: consider making blockSize and C based off of image size?
         Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 55, 5);
 
         // Crops the image AFTER the thresholding to avoid those border lines
@@ -319,7 +314,6 @@ public class SolutionActivity extends Activity {
         img_matrix = dst;
         Log.i(TAG, "getCroppedMaze: Scaled image size: " + dstSize);
 
-        //TODO: consider making blockSize and C based off of image size?
         Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
 
         //sendMat2Handler(img_matrix);
@@ -399,66 +393,11 @@ public class SolutionActivity extends Activity {
 
 
     private void displayMat(Mat mat) {
-        Bitmap bmp = mat2BMP(mat);
+        Bitmap bmp = CVUtils.mat2BMP(mat);
         if (bmp != null)
             imageView.setImageBitmap(bmp);
         else
             Log.e(TAG, "displayMat: Bitmap is null!");
-    }
-
-    private Bitmap mat2BMP(Mat mat) {
-        Bitmap bmp = null;
-
-        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
-        try {
-            if (mat.channels() == 1)
-                Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
-            else if (mat.channels() == 4)
-                tmp = mat;
-            else
-                Log.i(TAG, "mat2BMP: ERROR: CHANNELS = " + mat.channels());
-
-            bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
-            Utils.matToBitmap(tmp, bmp);
-        } catch (CvException e) {
-            Log.d("Exception", e.getMessage());
-        }
-
-        return bmp;
-    }
-
-    private Mat drawCnts(Mat mat, List<MatOfPoint> contours) {
-        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
-
-        if (mat.channels() == 1)
-            Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
-        else if (mat.channels() == 4)
-            tmp = mat;
-        else
-            Log.i(TAG, "drawCnts: ERROR: CHANNELS = " + mat.channels());
-        Imgproc.drawContours(tmp, contours, -1, new Scalar(0, 255, 0, 255), 1);
-
-        return tmp;
-    }
-
-    private Mat drawRects(Mat mat, List<Rect> rects) {
-        Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
-
-        if (mat.channels() == 1)
-            Imgproc.cvtColor(mat, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
-        else if (mat.channels() == 4)
-            tmp = mat;
-        else
-            Log.i(TAG, "drawRects: ERROR: CHANNELS = " + mat.channels());
-
-        for (Rect r : rects) {
-            org.opencv.core.Point p1 = new org.opencv.core.Point(r.x, r.y);
-            org.opencv.core.Point p2 = new org.opencv.core.Point(r.x + r.width, r.y + r.height);
-            //Core.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
-            Imgproc.rectangle(tmp, p1, p2, new Scalar(255, 0, 0, 255));
-        }
-
-        return tmp;
     }
 
     private String printArr(int[][] arr) {
