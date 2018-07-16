@@ -138,7 +138,6 @@ public class AStarToUse {
                  path.push(current.getParent());
                  current = current.getParent();
              } 
-             System.out.println();
              return path;
         }else {
             return null;
