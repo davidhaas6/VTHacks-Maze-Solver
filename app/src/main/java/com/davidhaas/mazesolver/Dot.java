@@ -21,8 +21,8 @@ import static android.view.MotionEvent.INVALID_POINTER_ID;
 /**
  * Name: Dot
  * Purpose: Selection dots for the bounds of the maze
- * Author: David Haas
- * Created: 2/20/18
+ * @author  David Haas
+ * @since   2/20/18
  */
 
 public class Dot extends View {
@@ -38,11 +38,23 @@ public class Dot extends View {
 
     private static String TAG = "Dot";
 
-    // https://stackoverflow.com/questions/2047573/how-to-draw-filled-polygon
+    /**
+     * Initializes the Dot.
+     * @param context The context.
+     * @param attrs Any attributes.
+     */
     public Dot(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
+    /**
+     * Initializes the Dot.
+     * @param context The context.
+     * @param attrs Any attributes.
+     * @param x The x coordinate of the center of the dot
+     * @param y The y coordinate of the center of the dot
+     * @param radius The radius of the dot
+     */
     public Dot(Context context, AttributeSet attrs, int x, int y, int radius) {
         super(context, attrs);
 
@@ -55,20 +67,19 @@ public class Dot extends View {
         this.RADIUS = radius;
         feather = (int) (RADIUS * 2.2);
 
-        // Log.i(TAG, "Dot: radius: " + radius);
-        // Log.i(TAG, "Dot: feather: " + feather);
-
         boundingBox = new Rect(x - (RADIUS + feather), y - (RADIUS + feather),
                 x + (RADIUS + feather),
                 y + (RADIUS + feather));
-
-        // Log.i(TAG, "Dot: x: " + boundingBox.left + " y: " + boundingBox.top + " width: " + boundingBox.width() + " height: " + boundingBox.height());
 
         myPaint = new Paint();
         myPaint.setColor(Color.argb(255, 84,110,122));
         myPaint.setAntiAlias(true);
     }
 
+    /**
+     * Moves the dot when it's touched and dragged.
+     * @param event The touch event
+     */
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
@@ -97,6 +108,10 @@ public class Dot extends View {
         return true;
     }
 
+    /**
+     * Draws the Dot
+     * @param canvas The canvas to draw the Dot on.
+     */
     public void draw(Canvas canvas) {
         super.draw(canvas);
 
@@ -105,14 +120,29 @@ public class Dot extends View {
         // invalidate();
     }
 
-    public void setBounds(int w, int h) {
-        boundingScreenRect = new Rect(0, 0, w, h);
+    /**
+     * Sets the bounds in which the Dot can move
+     * @param width The width that the dots may move from (0 to width)
+     * @param height The height that the dots may move from (0 to height)
+     */
+    public void setBounds(int width, int height) {
+        boundingScreenRect = new Rect(0, 0, width, height);
     }
 
+    /**
+     * Gets the location of the Dot.
+     * @return The location of the Dot
+     */
     public Point getLocation() {
         return new Point(mPosX, mPosY);
     }
 
+    /**
+     * See if the feathered bounding box for the Dot contains a given point.
+     * @param x The x-coordinate
+     * @param y The x-coordinate
+     * @return Whether or not the dot's bounding box contains the coordinates
+     */
     public boolean contains(int x, int y) {
         return boundingBox.contains(x, y);
     }

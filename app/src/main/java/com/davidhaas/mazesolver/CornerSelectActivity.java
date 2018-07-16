@@ -26,8 +26,8 @@ import java.io.IOException;
 /**
  * Name: CornerSelectActivity
  * Purpose: Provides an interface for the user to select the bounds of the maze
- * Author: David Haas
- * Created: 2/16/18
+ * @author  David Haas
+ * @since   2/16/18
  */
 
 public class CornerSelectActivity extends Activity {
@@ -35,6 +35,10 @@ public class CornerSelectActivity extends Activity {
     private static final String TAG = "CornerSelectActivity";
     public static final String CORNERS = "corners";
 
+    /**
+     * Instantiates the UI elements and displays the selection box.
+     * @param savedInstanceState The saved instance state.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,12 +99,12 @@ public class CornerSelectActivity extends Activity {
 
             @Override
             public void onClick(View view) {
-                // Closes the selection box and button
-                //selectionBox.hideView();
-                //solveMazeButton.setVisibility(View.GONE);
 
+                // Grabs the corners from the selection box
                 int[][] corners = CVUtils.orderPoints(selectionBox.getCornerCoords());
-                //Log.i(TAG, "onClick: Corners pre: \n" + printArr(corners));
+
+                // Scales the corners then adjusts the y coordinates to account for the top that is
+                // cropped of due to CENTER_CROP scaling on the imageView
                 for (int i = 0; i < 4; i++) {
                     corners[i][0] *= view_scale_ratio;
                     corners[i][1] *= view_scale_ratio;
@@ -121,12 +125,23 @@ public class CornerSelectActivity extends Activity {
 
     }
 
+    /**
+     * Rotates a bitmap image by a specified angle.
+     * @param source The bitmap to be rotated
+     * @param angle The angle to rotate the bitmap at
+     * @return The rotated bitmap
+     */
     public static Bitmap rotateBitmap(Bitmap source, float angle) {
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
         return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
     }
 
+    /**
+     * Converts a 2d array to a String nicely.
+     * @param arr The 2d array to print
+     * @return A String representation of the 2d array
+     */
     public String printArr(int[][] arr) {
         StringBuilder sb = new StringBuilder();
         sb.append("[ ");

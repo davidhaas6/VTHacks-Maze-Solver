@@ -34,12 +34,13 @@ import java.util.Date;
 /**
  * Name: MainActivity
  * Purpose: Provides an interface for the user to take a picture of a maze.
- * Author: David Haas
- * Created: 2/16/18
+ * @author  David Haas
+ * @since   2/16/18
  */
 
 public class MainActivity extends Activity {
 
+    // Starts OpenCV
     static {
         OpenCVLoader.initDebug();
     }
@@ -51,6 +52,10 @@ public class MainActivity extends Activity {
 
     private Uri mImageURI;
 
+    /**
+     * Instantiates the UI elements.
+     * @param savedInstanceState The saved instance state.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,8 +106,10 @@ public class MainActivity extends Activity {
         });
     }
 
+    /**
+     * Starts the intent to take a photo of the maze.
+     */
     private void dispatchTakePhotoIntent() {
-
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
         // Ensure that there's a camera activity to handle the intent
@@ -130,6 +137,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Starts the intent to load a photo from the gallery.
+     */
     private void dispatchLoadPhotoIntent() {
         Intent intent = new Intent();
         intent.setType("image/*");
@@ -137,6 +147,11 @@ public class MainActivity extends Activity {
         startActivityForResult(Intent.createChooser(intent, "Choose Picture"), REQUEST_LOAD_PHOTO);
     }
 
+    /**
+     * Creates space to take an image of the maze.
+     * @return The file that the image will occupy
+     * @throws IOException If the file cannot be created
+     */
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -150,6 +165,12 @@ public class MainActivity extends Activity {
         return image;
     }
 
+    /**
+     * Starts CornerSelectActivity with the image data grabbed from this activity.
+     * @param requestCode Describes whether the user loaded or captured a photo
+     * @param resultCode Successful or unsuccessful
+     * @param data The intent storing the image URI
+     */
     protected void onActivityResult(int requestCode, int resultCode,
                                     Intent data) {
         if (resultCode == RESULT_OK) {

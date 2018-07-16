@@ -12,10 +12,10 @@ import android.view.MotionEvent;
 import android.view.View;
 
 /**
- * Name: CornerSelectActivity
- * Purpose: Connects the dots and allows the user to manipulate the selection bounds for the maze
- * Author: David Haas
- * Last updated: 2/20/18
+ * Name: SelectionBox
+ * Purpose: A view that allows the user to manipulate the selection bounds for the maze
+ * @author  David Haas
+ * @since  2/20/18
  */
 
 public class SelectionBox extends View {
@@ -23,6 +23,11 @@ public class SelectionBox extends View {
     private Dot[] corners = new Dot[4];
     private Paint bPaint;
 
+    /**
+     * Initializes the SelectionBox and its Dots.
+     * @param context The context
+     * @param attrs Any attributes
+     */
     public SelectionBox(Context context, AttributeSet attrs) {
         super(context, attrs);
         final int radius = 30;
@@ -38,6 +43,10 @@ public class SelectionBox extends View {
         corners[3] = new Dot(context, attrs, 300, 600, radius);
     }
 
+    /**
+     * Takes the touches and forwards them on to the Dots that were touched
+     * @param event The touch event
+     */
     public boolean onTouchEvent(MotionEvent event) {
         //int action = event.getAction();
         // Log.i(TAG, "onTouchEvent: Touched!");
@@ -50,6 +59,10 @@ public class SelectionBox extends View {
         return true;
     }
 
+    /**
+     * Draws the view and connects the Dots.
+     * @param canvas The canvas to draw on
+     */
     public void draw(Canvas canvas) {
         super.draw(canvas);
 
@@ -76,7 +89,10 @@ public class SelectionBox extends View {
         invalidate();
     }
 
-    // Returns the x-y coordinates of the corners
+    /**
+     * Returns the x-y coordinates of the four corners.
+     * @return The x-y coordinates of the four corners
+     */
     public int[][] getCornerCoords() {
         int[][] coords = new int[4][2];
         Point coord;
@@ -89,12 +105,14 @@ public class SelectionBox extends View {
         return coords;
     }
 
+    /**
+     * Sets the width and height in which the dots of the selection box can move in. The method then
+     * forwards this information on to the dots.
+     * @param width The width that the dots may move from (0 to width)
+     * @param height The height that the dots may move from (0 to height)
+     */
     public void setImageBounds(int width, int height){
         for (int i = 0; i < corners.length; i++)
             corners[i].setBounds(width, height);
-    }
-
-    public void hideView() {
-        setVisibility(View.GONE);
     }
 }
