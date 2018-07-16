@@ -29,14 +29,19 @@ import static org.opencv.imgproc.Imgproc.boundingRect;
 /**
  * Name: CVUtils
  * Purpose: A collection of methods to process the maze image for solving
- * Author: David Haas
- * Created: 2/16/18
+ * @author  David Haas
+ * @since   2/16/18
  */
 
 public class CVUtils {
-
     private static final String TAG = "CVUtils";
 
+    /**
+     * Orders a set of coordinates in a 4x2 array such that:
+     * 0: top left, 1: top right, 2: bottom left, 3: bottom right
+     * @param pts The set of unordered 4 points
+     * @return int[][] The set of ordered points
+     */
     public static int[][] orderPoints(int[][] pts) {
         // Orders a set of coordinates in a 4x2 array such that:
         // 0: top left, 1: top right, 2: bottom left, 3: bottom right
@@ -61,6 +66,13 @@ public class CVUtils {
         return rect;
     }
 
+    /**
+     * Performs a 4-point perspective transform on a Mat.
+     * @param image The Mat representing an image
+     * @param bounds The bounds of the subsection of the Mat to perform the transform on
+     * @param inverse A flag to perform an inverse transform.
+     * @return Mat The transformed Mat.
+     */
     public static Mat fourPointTransform(Mat image, int[][] bounds, boolean inverse) {
         int[][] corners = orderPoints(bounds);
         int[] tl = corners[0], tr = corners[1], bl = corners[2], br = corners[3];
@@ -121,24 +133,24 @@ public class CVUtils {
         }
     }
 
+    /**
+     * The Euclidean distance between two points.
+     * @param p1 The first point
+     * @param p2 The second point
+     * @return double The distance between the two points
+     */
     public static double distance(int[] p1, int[] p2) {
         return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
     }
 
-    public static Rect getBoundingRect(int[][] bounds) {
-        bounds = orderPoints(bounds);
-        Point[] corners = new Point[4];
-        for (int i = 0; i < 4; i++)
-            corners[i] = new Point(bounds[i][0], bounds[i][1]);
-
-        MatOfPoint cornerMat = new MatOfPoint(corners);
-
-        return boundingRect(cornerMat);
-    }
-
+    /**
+     * Crops an image in the shape of any quadrilateral and returns the cropped section padded with
+     * white so that it makes a rectangle.
+     * @param image The image to be cropped
+     * @param bounds The four points defining the bounds of the section to be cropped
+     * @return Mat The cropped Mat padded with white.
+     */
     public static Mat cropQuadrilateral(Mat image, int[][] bounds) {
-        // https://stackoverflow.com/questions/48301186/cropping-concave-polygon-from-image-using-opencv-python
-        // https://stackoverflow.com/questions/41689522/opencv-cropping-non-rectangular-region-from-image-using-c
         image = image.clone();
         bounds = orderPoints(bounds);
         Point[] corners = new Point[4];
@@ -181,16 +193,21 @@ public class CVUtils {
         return result.submat(bRect);
     }
 
-    public static int[][] getBinaryArray(Mat m) {
+    /**
+     * Converts a Mat into a 2d binary int array
+     * @param mat The input Mat
+     * @return int[][] The 2d binary array
+     */
+    public static int[][] getBinaryArray(Mat mat) {
         // Reads the matrix into a byte array where the first index is pixel, second index is channel
-        int frameSize = m.rows() * m.cols();
+        int frameSize = mat.rows() * mat.cols();
         byte[] byteBuffer = new byte[frameSize];
-        m.get(0, 0, byteBuffer);
+        mat.get(0, 0, byteBuffer);
 
         //write to separate R,G,B arrays
-        int[][] out = new int[m.rows()][m.cols()];
-        for (int i = 0, c = 0; i < m.rows(); i++) {
-            for (int j = 0; j < m.cols(); j++, c++) {
+        int[][] out = new int[mat.rows()][mat.cols()];
+        for (int i = 0, c = 0; i < mat.rows(); i++) {
+            for (int j = 0; j < mat.cols(); j++, c++) {
                 if (byteBuffer[c] == 0)
                     out[i][j] = 1;
                 else
@@ -200,10 +217,15 @@ public class CVUtils {
         return out;
     }
 
-    // Returns two because mazes will be split in half pretty much
-    public static List<MatOfPoint> largest2PerimContours(Mat m) {
+    /**
+     * Returns the two largest-perimeter non-square contours. Square contours are omitted to help
+     * eliminate contours that aren't mazes.
+     * @param mat The Mat containing the maze.
+     * @return List<MatOfPoint> A list containing the two largest-perimeter contours.
+     */
+    public static List<MatOfPoint> largest2PerimContours(Mat mat) {
         List<MatOfPoint> cnts = new ArrayList<>();
-        Imgproc.findContours(m.clone(), cnts, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(mat.clone(), cnts, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
         if (cnts.size() == 0)
             return null;
@@ -239,16 +261,26 @@ public class CVUtils {
         return mazeComponents;
     }
 
-    private static boolean isContourSquare(MatOfPoint2f thisContour) {
+    /**
+     * Tests if a contour is generally a square.
+     * @param cnt The contour to be tested.
+     * @return boolean Whether or not the contour is a square.
+     */
+    private static boolean isContourSquare(MatOfPoint2f cnt) {
         MatOfPoint2f approxContour2f = new MatOfPoint2f();
 
-        double cntPerim = Imgproc.arcLength(thisContour, true);
+        double cntPerim = Imgproc.arcLength(cnt, true);
 
-        Imgproc.approxPolyDP(thisContour, approxContour2f, cntPerim * .01, true);
+        Imgproc.approxPolyDP(cnt, approxContour2f, cntPerim * .01, true);
 
         return approxContour2f.height() == 4;
     }
 
+    /**
+     * A helper method to more easily convert Mats to BMPs. Handles Mats with varying channels.
+     * @param mat The Mat to convert.
+     * @return Bitmap A bitmap of the Mat.
+     */
     public static Bitmap mat2BMP(Mat mat) {
         Bitmap bmp = null;
 
@@ -270,6 +302,12 @@ public class CVUtils {
         return bmp;
     }
 
+    /**
+     * A helper method to more easily draw contours on Mats.
+     * @param mat The Mat to draw the contours on.
+     * @param contours The contours to draw.
+     * @return Mat A Mat with contours drawn on it.
+     */
     public static Mat drawCnts(Mat mat, List<MatOfPoint> contours) {
         Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
 
@@ -284,6 +322,12 @@ public class CVUtils {
         return tmp;
     }
 
+    /**
+     * A helper method to more easily draw rectangles on Mats.
+     * @param mat The Mat to draw the rectangles on.
+     * @param rects The rectangles to draw.
+     * @return Mat A Mat with rectangles drawn on it.
+     */
     public static Mat drawRects(Mat mat, List<Rect> rects) {
         Mat tmp = new Mat(mat.height(), mat.width(), CvType.CV_8U, new Scalar(4));
 
@@ -304,6 +348,12 @@ public class CVUtils {
         return tmp;
     }
 
+    /**
+     * Combines two OpenCV rectangles through using Android's Rectangle's union method.
+     * @param r1 The first rectangle
+     * @param r2 The second rectangle
+     * @return Rect An OpenCV rectangle that's the union of r1 and r2.
+     */
     public static Rect combineRects(Rect r1, Rect r2) {
         android.graphics.Rect aRect1 = OpenCV2AndroidRect(r1);
         android.graphics.Rect aRect2 = OpenCV2AndroidRect(r2);
@@ -311,10 +361,20 @@ public class CVUtils {
         return android2OpenCVRect(aRect1);
     }
 
+    /**
+     * Converts an OpenCV Rect to an Android Rect.
+     * @param r the OpenCV Rect
+     * @return Rect An Android Rect.
+     */
     public static android.graphics.Rect OpenCV2AndroidRect(Rect r) {
         return new android.graphics.Rect(r.x, r.y, r.x + r.width, r.y + r.height);
     }
 
+    /**
+     * Converts an Android Rect to an OpenCV Rect.
+     * @param r the Android Rect
+     * @return Rect An OpenCV Rect.
+     */
     public static Rect android2OpenCVRect(android.graphics.Rect r) {
         return new Rect(new Point(r.left, r.top), new Point(r.right, r.bottom));
     }
