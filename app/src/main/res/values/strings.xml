@@ -6,6 +6,6 @@
     <string name="title">Maze Solver</string>
     <string name="solve_maze">Solve</string>
     <string name="solving_maze">Solving Maze…</string>
-    <string name="not_solvable">This maze could not be solved</string>
+    <string name="not_solvable">This maze could not be solved. Try re-selecting the bounds.</string>
     <string name="back">Back</string>
 </resources>
