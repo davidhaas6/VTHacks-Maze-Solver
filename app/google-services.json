@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "194137978610",
+    "firebase_url": "https://mazesolver-9e25c.firebaseio.com",
+    "project_id": "mazesolver-9e25c",
+    "storage_bucket": "mazesolver-9e25c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:194137978610:android:7a273d9eb41def50",
+        "android_client_info": {
+          "package_name": "com.davidhaas.mazesolver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "194137978610-447f3apb85002kttq0o6dd2adf260p3d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.davidhaas.mazesolver",
+            "certificate_hash": "2a53760c916d63e99fca0970a6a8da0a768b9695"
+          }
+        },
+        {
+          "client_id": "194137978610-1gi6m0sgo3gpgfu1ef2tknn81heeiuph.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBf9GndAFT_fY_xVJNVAiQfs8x-DIGJZc8"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "194137978610-1gi6m0sgo3gpgfu1ef2tknn81heeiuph.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -23,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.davidhaas.mazesolver.pathfinding.Asolution;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.wang.avi.AVLoadingIndicatorView;
 
 import org.opencv.android.Utils;
@@ -58,6 +59,7 @@ public class SolutionActivity extends Activity {
     private AVLoadingIndicatorView loadingIcon;
     private Button backButton;
     private Handler mHandler;
+    private FirebaseAnalytics mFirebaseAnalytics;
 
     /**
      * Instantiates the UI elements and starts the solution thread.
@@ -66,6 +68,9 @@ public class SolutionActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Obtain the FirebaseAnalytics instance.
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -158,6 +163,10 @@ public class SolutionActivity extends Activity {
                         stopLoading();
                         drawSolution(path, binaryMaze, image);
                         backButton.setVisibility(View.VISIBLE);
+
+                        Bundle fireB = new Bundle();
+                        fireB.putString("RESULT", "MAZE_NOT_SOLVED");
+                        mFirebaseAnalytics.logEvent("MAZE_PROCESSED", fireB);
                     }
                     break;
                 case MAZE_NOT_SOLVED:
@@ -165,6 +174,10 @@ public class SolutionActivity extends Activity {
                         stopLoading();
                         failText.setVisibility(View.VISIBLE);
                         backButton.setVisibility(View.VISIBLE);
+
+                        Bundle fireB = new Bundle();
+                        fireB.putString("RESULT", "MAZE_NOT_SOLVED");
+                        mFirebaseAnalytics.logEvent("MAZE_PROCESSED", fireB);
                     }
                     break;
                 case IMG_DEBUG:
@@ -227,6 +240,11 @@ public class SolutionActivity extends Activity {
             } catch (Exception e) {
                 Log.e(TAG, "run: Exception when solving maze: ", e);
                 state = MAZE_NOT_SOLVED;
+
+                Bundle fireB = new Bundle();
+                fireB.putString("RESULT", "ERROR_SOLVING_MAZE");
+                fireB.putString(FirebaseAnalytics.Param.VALUE, e.getMessage());
+                mFirebaseAnalytics.logEvent("MAZE_PROCESSED", fireB);
             }
 
             final long executionTime = System.currentTimeMillis() - startTime;
@@ -234,6 +252,10 @@ public class SolutionActivity extends Activity {
 
             if (executionTime < MIN_LOAD_TIME) // Forces the loading icon showing for MIN_LOAD_TIME
                 android.os.SystemClock.sleep(MIN_LOAD_TIME - executionTime);
+
+            Bundle fireB = new Bundle();
+            fireB.putString(FirebaseAnalytics.Param.VALUE, executionTime/1000 + " s");
+            mFirebaseAnalytics.logEvent("SOLVE_TIME", fireB);
 
             Bundle b = new Bundle();
             b.putSerializable("path", solution);

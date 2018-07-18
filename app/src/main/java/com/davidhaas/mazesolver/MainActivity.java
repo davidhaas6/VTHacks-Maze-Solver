@@ -24,6 +24,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+
 import org.opencv.android.OpenCVLoader;
 
 import java.io.File;
@@ -52,6 +54,8 @@ public class MainActivity extends Activity {
 
     private Uri mImageURI;
 
+    private FirebaseAnalytics mFirebaseAnalytics;
+
     /**
      * Instantiates the UI elements.
      * @param savedInstanceState The saved instance state.
@@ -59,6 +63,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Obtain the FirebaseAnalytics instance.
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         //Remove title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -168,8 +175,21 @@ public class MainActivity extends Activity {
         if (resultCode == RESULT_OK) {
             Intent cornerIntent = new Intent(this, CornerSelectActivity.class);
             if (requestCode == REQUEST_LOAD_PHOTO || requestCode == REQUEST_TAKE_PHOTO) {
-                if(requestCode == REQUEST_LOAD_PHOTO)
-                     mImageURI = data.getData();
+                if(requestCode == REQUEST_LOAD_PHOTO) {
+                    mImageURI = data.getData();
+
+                    // Log with Firebase
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.VALUE, "Loaded Photo");
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "image");
+                    mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+                } else {
+                    // Log with Firebase
+                    Bundle bundle = new Bundle();
+                    bundle.putString(FirebaseAnalytics.Param.VALUE, "Captured Photo");
+                    bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "image");
+                    mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+                }
 
                 cornerIntent.putExtra(IMAGE_URI, mImageURI.toString());
                 Log.i(TAG, "onActivityResult: data extras " + mImageURI);
