@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name">MazeSolver</string>
+    <string name="app_name">MazeWays</string>
     <string name="take_photo">Take Photo</string>
     <string name="load_photo">Load Maze</string>
     <string name="background_desc">Background Image</string>
-    <string name="title">Maze Solver</string>
+    <string name="title">Maze Ways</string>
     <string name="solve_maze">Solve</string>
     <string name="solving_maze">Solving Maze…</string>
     <string name="not_solvable">This maze could not be solved. Try re-selecting the bounds.</string>

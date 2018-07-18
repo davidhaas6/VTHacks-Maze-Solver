@@ -1,4 +1,4 @@
-package com.davidhaas.mazesolver;
+package com.davidhaas.mazeways;
 
 import android.graphics.Bitmap;
 import android.util.Log;

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.davidhaas.mazesolver.MainActivity"
+    tools:context="com.davidhaas.mazeways.MainActivity"
     android:background="#78909C">
 
     <ImageView

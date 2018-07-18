@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.davidhaas.mazesolver.CornerSelectActivity"
+    tools:context="com.davidhaas.mazeways.CornerSelectActivity"
     android:background="#78909C">
 
     <ImageView
@@ -14,7 +14,7 @@
         android:adjustViewBounds="true"
         android:scaleType="centerCrop"/>
 
-    <com.davidhaas.mazesolver.SelectionBox
+    <com.davidhaas.mazeways.SelectionBox
         android:id="@+id/selectionBox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

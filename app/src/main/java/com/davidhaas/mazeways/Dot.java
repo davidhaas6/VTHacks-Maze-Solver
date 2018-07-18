@@ -1,4 +1,4 @@
-package com.davidhaas.mazesolver;
+package com.davidhaas.mazeways;
 
 import android.app.Activity;
 import android.content.Context;

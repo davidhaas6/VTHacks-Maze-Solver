@@ -1,4 +1,4 @@
-package com.davidhaas.mazesolver;
+package com.davidhaas.mazeways;
 
 import org.junit.Test;
 

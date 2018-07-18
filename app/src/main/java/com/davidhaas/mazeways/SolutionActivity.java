@@ -1,4 +1,4 @@
-package com.davidhaas.mazesolver;
+package com.davidhaas.mazeways;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -22,7 +22,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.davidhaas.mazesolver.pathfinding.Asolution;
+import com.davidhaas.mazeways.pathfinding.Asolution;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.wang.avi.AVLoadingIndicatorView;
 

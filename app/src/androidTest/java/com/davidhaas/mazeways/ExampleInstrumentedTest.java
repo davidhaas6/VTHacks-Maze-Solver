@@ -1,4 +1,4 @@
-package com.davidhaas.mazesolver;
+package com.davidhaas.mazeways;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

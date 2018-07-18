@@ -10,7 +10,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:194137978610:android:7a273d9eb41def50",
         "android_client_info": {
-          "package_name": "com.davidhaas.mazesolver"
+          "package_name": "com.davidhaas.mazeways"
         }
       },
       "oauth_client": [
@@ -18,7 +18,7 @@
           "client_id": "194137978610-447f3apb85002kttq0o6dd2adf260p3d.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.davidhaas.mazesolver",
+            "package_name": "com.davidhaas.mazeways",
             "certificate_hash": "2a53760c916d63e99fca0970a6a8da0a768b9695"
           }
         },
