@@ -3,7 +3,7 @@
 An Android application used to solve mazes captured with a phone camera, built using OpenCV.
 
 ## Screen Shots
-### It's as easy as… 
+# It's as easy as… 
 #### 1: Take a picture.&nbsp;&nbsp;&nbsp;&nbsp;2: Select the maze.&nbsp;&nbsp;&nbsp;&nbsp;3: Get your solution.
 <img src="https://i.imgur.com/DwB5ivp.png" width="200"> <img src="https://i.imgur.com/vhxw7D8.png" width="200"> <img src="https://i.imgur.com/cNgg7hH.png" width="200">
 
