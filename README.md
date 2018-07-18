@@ -1,7 +1,6 @@
 # MazeWays
 
 An Android application used to solve mazes captured with a phone camera, built using OpenCV.
-<img src="https://github.com/davidhaas6/VTHacks-Maze-Solver/blob/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png?raw=true" width="48"> 
 
 ## Screen Shots
 #### Take a picture, select the maze, get your solution.
