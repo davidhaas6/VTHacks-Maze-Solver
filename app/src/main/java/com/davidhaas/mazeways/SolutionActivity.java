@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -49,8 +50,9 @@ public class SolutionActivity extends Activity {
     // TODO: Remove OpenCV dependencies https://developer.android.com/reference/android/graphics/Matrix, https://goo.gl/Qh8THg
 
     private static final String TAG = "SolutionActivity";
-    private final int SCALE_FACTOR = 2; // The amount the maze scales down before using A*
-    private final int MAZE_SOLVED = 1, MAZE_NOT_SOLVED = 0, IMG_DEBUG = -1;
+    private final int SOLVING_SCALE_FACTOR = 2; // The amount the maze scales down before using A*
+    private final int VIEW_SCALE_FACTOR = 4;
+    private final int MAZE_SOLVED = 1, MAZE_NOT_SOLVED = 0, IMG_DEBUG = -1, RECYCLE_IMG = -2;
     private final long MIN_LOAD_TIME = 1000; // The min time to show the loading icon
     private Point mazeCorner;
     private ImageView imageView;
@@ -60,6 +62,7 @@ public class SolutionActivity extends Activity {
     private Button backButton;
     private Handler mHandler;
     private FirebaseAnalytics mFirebaseAnalytics;
+    //private Bitmap image;
 
     /**
      * Instantiates the UI elements and starts the solution thread.
@@ -112,7 +115,7 @@ public class SolutionActivity extends Activity {
 
             Runnable solnRunnable = new SolutionRunnable(image, corners);
             new Thread(solnRunnable).start();
-
+            //image.recycle();
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "onCreate: Error loading image", e);
@@ -127,13 +130,29 @@ public class SolutionActivity extends Activity {
 
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        if(imageView.getDrawable() != null) {
+            Bitmap currentBMP = ((BitmapDrawable) imageView.getDrawable()).getBitmap();
+            Log.i(TAG, "onStop: Recycled current bmp dims: " + currentBMP.getWidth() + ", " + currentBMP.getHeight());
+            Log.i(TAG, "onStop: Recycling current BMP in imageView");
+
+            currentBMP.recycle();
+        }
+
+        mHandler.sendEmptyMessage(RECYCLE_IMG);
+        imageView.setImageDrawable(null);
+    }
+
     /**
      * The handler that interacts with the solution thread to display the maze's results in the main
      * UI thread.
      */
     private class MazeUIHandler extends Handler {
-        private Bitmap image;
         private boolean debugging;
+        private Bitmap image;
 
         /**
          * The constructor for the UI handler.
@@ -162,6 +181,10 @@ public class SolutionActivity extends Activity {
 
                         stopLoading();
                         drawSolution(path, binaryMaze, image);
+                        Log.i(TAG, "handleMessage: Original img dims: " + image.getWidth() + ", " + image.getHeight());
+                        Log.i(TAG, "handleMessage: Image: " + image);
+                        image.recycle();
+
                         backButton.setVisibility(View.VISIBLE);
 
                         Bundle fireB = new Bundle();
@@ -174,7 +197,9 @@ public class SolutionActivity extends Activity {
                         stopLoading();
                         failText.setVisibility(View.VISIBLE);
                         backButton.setVisibility(View.VISIBLE);
+                        image.recycle();
 
+                        Log.i(TAG, "handleMessage: MAZE_NOT_SOLVED");
                         Bundle fireB = new Bundle();
                         fireB.putString("RESULT", "MAZE_NOT_SOLVED");
                         mFirebaseAnalytics.logEvent("MAZE_PROCESSED", fireB);
@@ -190,9 +215,17 @@ public class SolutionActivity extends Activity {
                     Log.i(TAG, "handleMessage: displaying debug");
 
                     imageView.setImageBitmap(image);
+                    image.recycle();
                     backButton.setVisibility(View.VISIBLE);
                     break;
-
+                case RECYCLE_IMG:
+                    if (image != null && !image.isRecycled()) {
+                        Log.i(TAG, "handleMessage: Recycled image in handler");
+                        image.recycle();
+                        image = null;
+                    }
+                    //imageView.setImageDrawable(null);
+                    break;
             }
         }
     }
@@ -201,8 +234,8 @@ public class SolutionActivity extends Activity {
      * A thread to solve the maze in the background while the loading icon is being displayed.
      */
     private class SolutionRunnable implements Runnable {
-        Bitmap image;
-        int[][] corners;
+        private Bitmap image;
+        private int[][] corners;
 
         /**
          * The constructor for the solution runnable thread
@@ -225,6 +258,7 @@ public class SolutionActivity extends Activity {
 
             Mat croppedMaze = getCroppedMaze(corners, image);
             int[][] croppedBinaryMaze = CVUtils.getBinaryArray(croppedMaze);
+            croppedMaze.release();
 
             // Runs A* on the maze and gets the solution stack
             Stack<int[]> solution = null;
@@ -261,7 +295,7 @@ public class SolutionActivity extends Activity {
             b.putSerializable("path", solution);
             b.putSerializable("binary", croppedBinaryMaze);
             Message completeMessage = mHandler.obtainMessage(state, b);
-
+            Log.i(TAG, "run: Image: " + image);
             completeMessage.sendToTarget();
         }
     }
@@ -305,11 +339,12 @@ public class SolutionActivity extends Activity {
         Mat img_matrix = new Mat();
         Bitmap bmp32 = image.copy(Bitmap.Config.ARGB_8888, true);
         Utils.bitmapToMat(bmp32, img_matrix);
+        bmp32.recycle();
 
         // Convert to gray, blur, and threshold.
-        Imgproc.cvtColor(img_matrix.clone(), img_matrix, Imgproc.COLOR_RGB2GRAY);
-        Imgproc.GaussianBlur(img_matrix.clone(), img_matrix, new Size(11, 11), 0);
-        Imgproc.adaptiveThreshold(img_matrix.clone(), img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 55, 5);
+        Imgproc.cvtColor(img_matrix, img_matrix, Imgproc.COLOR_RGB2GRAY);
+        Imgproc.GaussianBlur(img_matrix, img_matrix, new Size(11, 11), 0);
+        Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 55, 5);
 
         // Crops the image AFTER the thresholding to avoid those border lines
         img_matrix = CVUtils.cropQuadrilateral(img_matrix, corners);
@@ -360,10 +395,12 @@ public class SolutionActivity extends Activity {
         }
 
         // Resize the image
-        Size dstSize = new Size(img_matrix.width() / SCALE_FACTOR, img_matrix.height() / SCALE_FACTOR);
+        Size dstSize = new Size(img_matrix.width() / SOLVING_SCALE_FACTOR, img_matrix.height() / SOLVING_SCALE_FACTOR);
         Mat dst = new Mat();
         Imgproc.resize(img_matrix, dst, dstSize, 1, 1, Imgproc.INTER_AREA);
+
         img_matrix = dst;
+
         Log.i(TAG, "getCroppedMaze: Scaled image size: " + dstSize);
 
         Imgproc.adaptiveThreshold(img_matrix, img_matrix, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 25, 30);
@@ -387,7 +424,7 @@ public class SolutionActivity extends Activity {
         int[][] pixOut = new int[mazetrix.length][mazetrix[0].length];
 
         // The radius that the path "puffs" out in
-        final int bloomAmount = (int) ((mazetrix.length * mazetrix[0].length) * Math.pow(SCALE_FACTOR, 2) / 50000);
+        final int bloomAmount = (int) ((mazetrix.length * mazetrix[0].length) * Math.pow(SOLVING_SCALE_FACTOR, 2) / 50000);
         Log.i(TAG, "drawSolution: bloom: " + bloomAmount);
 
         // Colors the solution
@@ -423,14 +460,29 @@ public class SolutionActivity extends Activity {
         Bitmap solution = Bitmap.createBitmap(pixels, mazetrix[0].length, mazetrix.length, Bitmap.Config.ARGB_8888);
         solution = Bitmap.createScaledBitmap(
                 solution,
-                solution.getWidth() * SCALE_FACTOR,
-                solution.getHeight() * SCALE_FACTOR,
+                solution.getWidth() * SOLVING_SCALE_FACTOR,
+                solution.getHeight() * SOLVING_SCALE_FACTOR,
                 true
         );
 
         // Overlay the image
         Bitmap out = putOverlay(image, solution, mazeCorner.x, mazeCorner.y);
+
+        Log.i(TAG, "drawSolution: Image: " + image);
+        Log.i(TAG, "drawSolution: Solution: " + solution);
+
+        solution.recycle();
+        image.recycle();
+        out = Bitmap.createScaledBitmap(
+                out,
+                out.getWidth() / VIEW_SCALE_FACTOR,
+                out.getHeight() / VIEW_SCALE_FACTOR,
+                true
+        );
+
         imageView.setImageBitmap(out);
+
+        Log.i(TAG, "drawSolution: Out img dims: " + out.getWidth() + ", " + out.getHeight());
     }
 
     /**

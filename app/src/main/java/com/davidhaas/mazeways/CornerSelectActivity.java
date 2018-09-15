@@ -6,10 +6,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -34,6 +31,11 @@ public class CornerSelectActivity extends Activity {
 
     private static final String TAG = "CornerSelectActivity";
     public static final String CORNERS = "corners";
+    private final int IMG_SCALE_FACTOR = 4;
+
+    private Bitmap image;
+    private Uri imgUri;
+    ImageView imageView;
 
     /**
      * Instantiates the UI elements and displays the selection box.
@@ -42,7 +44,7 @@ public class CornerSelectActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Bitmap image = null;
+        //Bitmap image = null;
 
         // Removes the title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -55,22 +57,9 @@ public class CornerSelectActivity extends Activity {
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/press_start_2p.ttf");
         solveMazeButton.setTypeface(font);
 
-        // Loads the intent image as a bitmap for processing
-        final Uri imgUri = Uri.parse(getIntent().getStringExtra(MainActivity.IMAGE_URI));
-        try {
-             image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.e(TAG, "onCreate: Error loading image", e);
-        }
-
-        // Rotate the image if its wider than it is long
-        if(image.getWidth() > image.getHeight())
-            image = rotateBitmap(image, 90);
-
-        // Sets the bitmap
-        ImageView imageView = findViewById(R.id.imageView);
-        imageView.setImageBitmap(image);
+        imageView = findViewById(R.id.imageView);
+        imgUri = Uri.parse(getIntent().getStringExtra(MainActivity.IMAGE_URI));
+        loadDisplayImage();
 
         // Gets the ratio between the appeared image height and the actual height so we can map
         // screen touches to pixels on the image
@@ -106,9 +95,9 @@ public class CornerSelectActivity extends Activity {
                 // Scales the corners then adjusts the y coordinates to account for the top that is
                 // cropped of due to CENTER_CROP scaling on the imageView
                 for (int i = 0; i < 4; i++) {
-                    corners[i][0] *= view_scale_ratio;
-                    corners[i][1] *= view_scale_ratio;
-                    corners[i][1] += croppedTops*view_scale_ratio;
+                    corners[i][0] *= view_scale_ratio * IMG_SCALE_FACTOR;
+                    corners[i][1] *= view_scale_ratio * IMG_SCALE_FACTOR;
+                    corners[i][1] += croppedTops*view_scale_ratio * IMG_SCALE_FACTOR;
                 }
                 Log.i(TAG, "onClick: Corners post: \n" + printArr(corners));
 
@@ -123,6 +112,56 @@ public class CornerSelectActivity extends Activity {
             }
         });
 
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (image != null && !image.isRecycled()) {
+            image.recycle();
+            image = null;
+            Log.i(TAG, "onStop: Recycling ConerSelect Image");
+        }
+        imageView.setImageDrawable(null);
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        loadDisplayImage();
+    }
+
+    private void loadDisplayImage() {
+        // Loads the intent image as a bitmap for processing
+        if (image == null) {
+            try {
+                image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imgUri);
+                Log.i(TAG, "loadDisplayImage: IMAGE SIZE: " + image.getHeight() * image.getWidth() * 4 * 2);
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.e(TAG, "onCreate: Error loading image", e);
+            }
+
+
+            // Scale image down
+            Log.i(TAG, "loadDisplayImage: Old Image size: " + image.getWidth() + "x" + image.getHeight());
+            image = Bitmap.createScaledBitmap(
+                    image,
+                    image.getWidth() / IMG_SCALE_FACTOR,
+                    image.getHeight() / IMG_SCALE_FACTOR,
+                    true
+            );
+            Log.i(TAG, "loadDisplayImage: New Image size: " + image.getWidth() + "x" + image.getHeight());
+            Log.i(TAG, "loadDisplayImage: IMAGE SIZE: " + image.getHeight() * image.getWidth() * 4 * 2);
+
+
+            // Rotate the image if its wider than it is long
+            if (image.getWidth() > image.getHeight())
+                image = rotateBitmap(image, 90);
+        }
+
+        // Sets the bitmap
+        imageView.setImageBitmap(image);
     }
 
     /**

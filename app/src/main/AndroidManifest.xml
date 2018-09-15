@@ -11,6 +11,7 @@
         android:maxSdkVersion="18" />
 
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -26,7 +27,7 @@
 
         <provider
             android:name="android.support.v4.content.FileProvider"
-            android:authorities="com.davidhaas.mazeways"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -35,7 +36,7 @@
         </provider>
 
         <activity android:name=".CornerSelectActivity" />
-        <activity android:name=".SolutionActivity"></activity>
+        <activity android:name=".SolutionActivity"/>
     </application>
 
 </manifest>

@@ -7,13 +7,6 @@
     tools:context="com.davidhaas.mazeways.MainActivity"
     android:background="#78909C">
 
-    <ImageView
-        android:id="@+id/imgBackground"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha=".07"
-        android:scaleType="center"/>
-
     <TextView
         android:id="@+id/textView"
 

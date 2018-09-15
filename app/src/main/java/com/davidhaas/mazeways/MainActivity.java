@@ -25,6 +25,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.firebase.analytics.FirebaseAnalytics;
+import com.squareup.leakcanary.LeakCanary;
 
 import org.opencv.android.OpenCVLoader;
 
@@ -47,13 +48,14 @@ public class MainActivity extends Activity {
         OpenCVLoader.initDebug();
     }
 
-    public static final String IMAGE_URI = "com.davidhaas.mazesolver.IMAGE_URI";
+    public static final String IMAGE_URI = "com.davidhaas.mazeways.IMAGE_URI";
     static final int REQUEST_TAKE_PHOTO = 1, REQUEST_LOAD_PHOTO = 2;
+    private final int IMG_SCALE_FACTOR = 10;
+
 
     private static final String TAG = "MyActivity";
 
     private Uri mImageURI;
-
     private FirebaseAnalytics mFirebaseAnalytics;
 
     /**
@@ -75,9 +77,18 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         // Sets the background bmp
-        Bitmap backgBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.maze_background));
+        /*backgBMP = Bitmap.createBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.maze_background));
+        backgBMP = Bitmap.createScaledBitmap(
+                backgBMP,
+                backgBMP.getWidth() / IMG_SCALE_FACTOR,
+                backgBMP.getHeight() / IMG_SCALE_FACTOR,
+                true
+        );
         ImageView background = findViewById(R.id.imgBackground);
         background.setImageBitmap(backgBMP);
+        background.setImageDrawable(R.drawable.maze_background);*/
+        //ImageView background = findViewById(R.id.imgBackground);
+        //background.setImageDrawable(getResources().getDrawable(R.drawable.main_background));
 
         // Creates the buttons with their listeners
         Button takePhotoButton = findViewById(R.id.takePhotoButton);
@@ -126,7 +137,7 @@ public class MainActivity extends Activity {
             // Continue only if the File was successfully created
             if (photoFile != null) {
                 mImageURI = FileProvider.getUriForFile(this,
-                        "com.davidhaas.mazesolver",
+                        "com.davidhaas.mazeways.fileprovider",
                         photoFile);
 
                 // Takes the picture
@@ -192,9 +203,22 @@ public class MainActivity extends Activity {
                 }
 
                 cornerIntent.putExtra(IMAGE_URI, mImageURI.toString());
-                Log.i(TAG, "onActivityResult: data extras " + mImageURI);
                 startActivity(cornerIntent);
             }
         }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        //ImageView background = findViewById(R.id.imgBackground);
+        //background.setImageDrawable(null);
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        //ImageView background = findViewById(R.id.imgBackground);
+        //background.setImageDrawable(getResources().getDrawable(R.drawable.main_background));
     }
 }

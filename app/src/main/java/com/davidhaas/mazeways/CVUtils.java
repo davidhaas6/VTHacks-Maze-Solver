@@ -148,7 +148,6 @@ public class CVUtils {
      * @return The cropped Mat padded with white.
      */
     public static Mat cropQuadrilateral(Mat image, int[][] bounds) {
-        image = image.clone();
         bounds = orderPoints(bounds);
         Point[] corners = new Point[4];
         for (int i = 0; i < 4; i++)
@@ -186,6 +185,8 @@ public class CVUtils {
         Mat result = new Mat(image.size(), image.type(), new Scalar(255, 255, 255));
         image.copyTo(result, mask8);
 
+        mask8.release();
+
         // Returns the masked image with the rest of the image being 0s
         return result.submat(bRect);
     }
@@ -222,7 +223,10 @@ public class CVUtils {
      */
     public static List<MatOfPoint> largest2PerimContours(Mat mat) {
         List<MatOfPoint> cnts = new ArrayList<>();
-        Imgproc.findContours(mat.clone(), cnts, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+
+        Mat cloned = mat.clone();
+        Imgproc.findContours(cloned, cnts, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        cloned.release();
 
         if (cnts.size() == 0)
             return null;
@@ -292,6 +296,7 @@ public class CVUtils {
 
             bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(tmp, bmp);
+            tmp.release();
         } catch (CvException e) {
             Log.d("Exception", e.getMessage());
         }
